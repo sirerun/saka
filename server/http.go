@@ -34,6 +34,10 @@ func NewWithOptions(engine saka.Searcher, opts Options) *Server {
 }
 
 // Handler returns the HTTP mux, optionally wrapped with API-key auth.
+//
+// /health is always open. When Keys is set, /v1/usage still accepts the
+// configured AdminKey Bearer token without going through SignedKeys
+// verification (billing jobs are not API consumers).
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/search", s.handleSearch)
@@ -45,14 +49,29 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("ok"))
 	})
-	if s.opts.Keys != nil {
-		keys := s.opts.Keys
-		if s.opts.Usage != nil {
-			keys = recordingKeySource{inner: keys, stats: s.opts.Usage}
-		}
-		return AuthMiddleware(keys, mux)
+	if s.opts.Keys == nil {
+		return mux
 	}
-	return mux
+	keys := s.opts.Keys
+	if s.opts.Usage != nil {
+		keys = recordingKeySource{inner: keys, stats: s.opts.Usage}
+	}
+	protected := AuthMiddleware(keys, mux)
+	adminKey := s.opts.AdminKey
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			mux.ServeHTTP(w, r)
+			return
+		}
+		if r.URL.Path == "/v1/usage" && adminKey != "" {
+			token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if ok && token == adminKey {
+				mux.ServeHTTP(w, r)
+				return
+			}
+		}
+		protected.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) record(r *http.Request, field func(*KeyUsage)) {
