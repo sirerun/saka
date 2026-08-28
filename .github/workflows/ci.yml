@@ -35,16 +35,30 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with: { version: latest }
 
-  build-stack:
+  # Runs on GitHub-hosted runners (Docker + kind available there).
+  # Do not require Docker/kind on developer laptops.
+  k8s-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
-        run: docker build -t saka:ci .
-      - name: Smoke the compose stack
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: saka
+      - name: Build image and load into kind
         run: |
-          cp deploy/searxng/settings.yml /tmp/ 2>/dev/null || true
-          docker compose up -d
-          sleep 20
-          ./deploy/smoke.sh
-          docker compose down
+          docker build -t saka:ci .
+          kind load docker-image saka:ci --name saka
+      - name: Apply manifests and smoke
+        run: |
+          chmod +x deploy/k8s/apply.sh deploy/smoke.sh
+          SAKA_IMAGE=saka:ci ./deploy/k8s/apply.sh
+          kubectl -n saka wait --for=condition=available deploy/saka --timeout=180s
+          kubectl -n saka port-forward svc/saka 8080:8080 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8080/health >/dev/null && break
+            sleep 1
+          done
+          SAKA_BASE_URL=http://127.0.0.1:8080 ./deploy/smoke.sh

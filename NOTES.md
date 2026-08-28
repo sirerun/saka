@@ -31,6 +31,9 @@ free HTTP/MCP path end-to-end.
   domain is owned.
 - Homebrew tap owner is `sirerun` in GoReleaser config — tap repo may
   not exist yet.
+- Cluster deploy is plain manifests under `deploy/k8s/` (no Helm chart
+  yet). Apply from a host that already has Docker/kind/kubectl — CI
+  uses GitHub-hosted kind; laptops are not expected to install Docker.
 
 ## Mechanical fixes from the original transcription
 
@@ -45,5 +48,8 @@ of the import commit.
 go vet ./...
 go test $(go list ./... | grep -v '/cli/') -race -cover
 go build -o /tmp/saka ./cli/saka
-docker compose up -d && sleep 20 && ./deploy/smoke.sh
+# On a k8s-capable host (not required on laptops):
+#   SAKA_IMAGE=saka:local ./deploy/k8s/apply.sh
+#   kubectl -n saka port-forward svc/saka 8080:8080
+#   SAKA_BASE_URL=http://127.0.0.1:8080 ./deploy/smoke.sh
 ```
