@@ -88,8 +88,8 @@ in its settings (see `deploy/searxng/settings.yml`).
 
 | Endpoint | Description |
 |---|---|
-| `GET /v1/search?q=...&n=10&format=json\|markdown` | search *(described in chat, handler not written — see NOTES.md)* |
-| `GET /v1/fetch?url=...&format=text\|json\|markdown` | fetch + extract *(same)* |
+| `GET /v1/search?q=...&n=10&format=json\|markdown` | search |
+| `GET /v1/fetch?url=...&format=text\|json\|markdown` | fetch + extract |
 | `GET /v1/stream?url=...` | SSE streaming extraction |
 | `GET /v1/usage` | per-key billing stats (needs `--keys`) |
 
