@@ -240,7 +240,7 @@ Keyless mode (self-hosted) has no auth.
   = skip, not fail), fetch/extract/stream against example.com, cache-hit
   timing. Provider canaries assert anchor class names still present in
   live HTML (markup-drift detection).
-- CI: vet, race tests, coverage gate, golangci-lint, compose build+smoke.
+- CI: vet, race tests, coverage gate, golangci-lint, kind + k8s smoke.
   Release: tag-triggered, tests first, live smoke best-effort with warning.
 - Dependabot: gomod, actions, docker — weekly.
 
@@ -266,6 +266,6 @@ Keyless mode (self-hosted) has no auth.
 | Version | Contents |
 |---|---|
 | 1.0 | Core: providers, chain, fetch/extract/stream, CLI, REST, MCP, tools, tests, release pipeline |
-| 1.1 | Startpage, auth middleware, disk cache, Docker/compose stack |
+| 1.1 | Startpage, auth middleware, disk cache, k8s stack (saka + SearXNG) |
 | 1.2 | Signed keys, usage metering, `saka keys`, CI/CD, dependabot |
 | Future | `/v1/usage` persistence backend, news/images verticals, `Page.Chunks` over SSE search, additional providers via plugin convention |

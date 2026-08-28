@@ -187,8 +187,8 @@ read) plus an opportunistic `GC()` walk on startup. Sharding by the
 first 2 hex chars keeps directories small at ~100k entries.
 
 The disk cache is why the CLI and the server never both hit the
-network for the same URL, and why the compose stack's volume makes
-restarts cheap.
+network for the same URL, and why the k8s Deployment's cache volume
+makes restarts cheap.
 
 ### 1.5 `server` — three protocols, one mux
 
@@ -406,8 +406,8 @@ structural, not aspirational:
 - **Your upstream obligations pass through.** If your paid service
   serves 10,000 searches/day through Saka's default chain, you are
   making 10,000 polite requests to third-party engines. At that
-  scale, run SearXNG. The compose stack exists precisely so this is
-  a one-command migration.
+  scale, run SearXNG. The k8s manifests exist precisely so this is
+  a one-apply migration onto any cluster (kind locally, GKE in prod).
 - **The free path is not a loss leader.** Saka has no telemetry and
   no hosted service of its own. The paid scaffolding serves users who
   *choose* to run a service — it does not fund or steer the core.

@@ -99,20 +99,28 @@ Or mount the handler in your own Go server:
 mux.Handle("/v1/", sakaserver.New(engine).Handler())
 ```
 
-## Self-hosted stack (Docker Compose)
+## Self-hosted stack (Kubernetes)
+
+Manifests under [`deploy/k8s/`](deploy/k8s/) run **saka + SearXNG** in
+namespace `saka`. SearXNG is ClusterIP-only (not exposed outside the
+cluster). Use kind/k3s/GKE — whatever kubectl context you already have;
+this repo does not require Docker on a laptop.
 
 ```sh
-git clone https://github.com/sirerun/saka && cd saka
-docker compose up -d
+# On a machine with Docker + kind (CI box / dedicated host):
+docker build -t saka:local .
+kind load docker-image saka:local          # or push to your registry
 
-# verify:
-curl "http://localhost:8080/v1/search?q=open+source+llm&format=json" | jq '.provider'
-curl -N "http://localhost:8080/v1/stream?url=https://example.com" | head -5
+SAKA_IMAGE=saka:local ./deploy/k8s/apply.sh
+kubectl -n saka port-forward svc/saka 8080:8080
+
+curl "http://127.0.0.1:8080/v1/search?q=open+source+llm&format=json" | jq '.provider'
+SAKA_BASE_URL=http://127.0.0.1:8080 ./deploy/smoke.sh
 ```
 
-Brings up `saka` + a private `searxng` instance on an internal network
-(no ports exposed on searxng itself). See `docker-compose.yml`,
-`deploy/searxng/settings.yml`, `deploy/saka.json`.
+For production, point `SAKA_IMAGE` at your registry tag and apply the
+same manifests (rotate the SearXNG `secret_key` in
+`deploy/k8s/searxng.yaml` first).
 
 ## Paid-service groundwork
 
@@ -154,9 +162,9 @@ saka/
 ├── server/                # MCP, REST/SSE, API-key auth, usage, signed keys
 ├── tools/                # OpenAI/Anthropic tool-call schemas
 ├── cli/saka/             # `saka search|fetch|serve|keys`
-├── deploy/                # searxng settings, saka.json, smoke.sh
+├── deploy/                # k8s manifests, smoke.sh, reference configs
 ├── .github/workflows/     # CI + release
-├── Dockerfile, docker-compose.yml
+├── Dockerfile
 ├── saka.json.example, .goreleaser.yaml, install.sh
 └── README.md, NOTES.md
 ```
