@@ -42,12 +42,12 @@ Saka is a free web search system for Go and AI applications, shipped as:
     tools/ — OpenAI/Anthropic schemas + dispatcher ┘
 
 Packages:
-- `saka` (root) — types, Engine, config, validation
+- `saka` (root) — Engine, config, validation; re-exports `types`
+- `types` — Query/Result/Page/Provider leaf contracts (breaks import cycles)
 - `provider/duckduckgo`, `provider/searxng`, `provider/startpage`
 - `chain` — fallback orchestration, circuit breakers, rate limits
 - `fetch` — HTTP fetching, robots.txt, readability extraction,
   streaming, memory + disk caching
-- `internal/htmd` — shared HTML helpers (attr/class/text)
 - `server` — REST, SSE, MCP (JSON-RPC 2.0 stdio), auth, usage
 - `tools` — AI tool-calling schemas and dispatcher
 - `ratelimit` — token bucket

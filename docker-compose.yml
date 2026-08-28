@@ -26,9 +26,9 @@ services:
       # This volume + command line make the two agree.
       - ./deploy/saka.json:/etc/saka/saka.json:ro
     command: ["serve", "--addr", ":8080", "--config", "/etc/saka/saka.json"]
-    # Optional paid mode:
-    # command: ["serve", "--addr", ":8080", "--config", "/etc/saka/saka.json", "--keys", "/run/keys/api_keys.json"]
-    # secrets: [api_keys]
+    # Optional paid mode (signed keys from `saka keys`):
+    # command: ["serve", "--addr", ":8080", "--config", "/etc/saka/saka.json", "--keys", "/run/keys/saka_ed25519.pub", "--admin-key", "admin-secret"]
+    # volumes also need the .pub file mounted.
     restart: unless-stopped
 
 volumes:

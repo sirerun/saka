@@ -9,7 +9,8 @@ import (
 	"io"
 	"os"
 
-	saka "github.com/you/saka"
+	saka "github.com/sirerun/saka"
+	"github.com/sirerun/saka/tools"
 )
 
 // ---- JSON-RPC 2.0 over stdio ----
@@ -118,12 +119,12 @@ func (s *MCPServer) dispatch(ctx context.Context, method string, params json.Raw
 			{
 				Name:        "web_search",
 				Description: "Search the web for free. Returns title, URL, snippet, position.",
-				InputSchema: json.RawMessage(saka.SearchSchema()),
+				InputSchema: json.RawMessage(tools.SearchSchema()),
 			},
 			{
 				Name:        "fetch_page",
 				Description: "Fetch a URL and return extracted readable article text.",
-				InputSchema: json.RawMessage(saka.FetchSchema()),
+				InputSchema: json.RawMessage(tools.FetchSchema()),
 			},
 		}}, nil
 
@@ -132,7 +133,7 @@ func (s *MCPServer) dispatch(ctx context.Context, method string, params json.Raw
 		if err := json.Unmarshal(params, &p); err != nil {
 			return nil, &rpcError{Code: -32602, Message: "invalid params"}
 		}
-		text, err := saka.ExecuteTool(ctx, s.engine, p.Name, p.Arguments)
+		text, err := tools.ExecuteTool(ctx, s.engine, p.Name, p.Arguments)
 		if err != nil {
 			// Tool execution errors are reported inside the result per MCP spec.
 			return map[string]any{

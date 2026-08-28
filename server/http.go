@@ -1,25 +1,20 @@
+// Package server implements the saka HTTP and MCP servers.
 package server
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
-	saka "github.com/you/saka"
+	saka "github.com/sirerun/saka"
 )
-
-// NOTE: the source chat never wrote handleSearch/handleFetch, or the
-// original single-arg `New` constructor — only handleStream (v1.0),
-// then Options/NewWithOptions/Handler (v1.1, for optional API-key auth),
-// then a `usage *UsageStats` field implied by usage.go's wiring (v1.2).
-// This struct is assembled from all three passes; handleSearch and
-// handleFetch are still exactly what the chat left them: described in
-// prose (GET /v1/search, GET /v1/fetch) but never coded. See NOTES.md.
 
 // Options configures optional server behavior.
 type Options struct {
 	Keys     KeySource   // nil = open access (free/self-hosted mode)
-	AdminKey string      // referenced by usage.go's /v1/usage wiring, added here so it compiles
+	AdminKey string      // Bearer token that can dump full /v1/usage
 	Usage    *UsageStats // nil = usage tracking disabled
 }
 
@@ -28,16 +23,17 @@ type Server struct {
 	opts   Options
 }
 
-// New is a plain constructor with no auth/usage — equivalent to
-// NewWithOptions(engine, Options{}).
+// New is a plain constructor with no auth/usage.
 func New(engine saka.Searcher) *Server {
 	return &Server{engine: engine}
 }
 
+// NewWithOptions constructs a Server with optional auth and usage.
 func NewWithOptions(engine saka.Searcher, opts Options) *Server {
 	return &Server{engine: engine, opts: opts}
 }
 
+// Handler returns the HTTP mux, optionally wrapped with API-key auth.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/search", s.handleSearch)
@@ -50,21 +46,116 @@ func (s *Server) Handler() http.Handler {
 		w.Write([]byte("ok"))
 	})
 	if s.opts.Keys != nil {
-		return AuthMiddleware(s.opts.Keys, mux)
+		keys := s.opts.Keys
+		if s.opts.Usage != nil {
+			keys = recordingKeySource{inner: keys, stats: s.opts.Usage}
+		}
+		return AuthMiddleware(keys, mux)
 	}
-	return mux // keyless self-hosted mode
+	return mux
 }
 
+func (s *Server) record(r *http.Request, field func(*KeyUsage)) {
+	if s.opts.Usage == nil {
+		return
+	}
+	if key := APIKeyFromContext(r.Context()); key != "" {
+		s.opts.Usage.Record(key, field)
+	}
+}
+
+// GET /v1/search?q=&n=&format=json|markdown
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
-	// TODO: not written out in the source chat — wire up saka.Query from
-	// r.URL.Query() (q, n, format) and call s.engine.Search.
-	http.Error(w, "not implemented in source chat", http.StatusNotImplemented)
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		http.Error(w, `{"error":"missing q param"}`, http.StatusBadRequest)
+		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+		return
+	}
+	n := 10
+	if ns := r.URL.Query().Get("n"); ns != "" {
+		v, err := strconv.Atoi(ns)
+		if err != nil || v <= 0 {
+			http.Error(w, `{"error":"invalid n param"}`, http.StatusBadRequest)
+			s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+			return
+		}
+		n = v
+	}
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+
+	res, err := s.engine.Search(r.Context(), saka.Query{Text: q, MaxResults: n})
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadGateway)
+		s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
+		return
+	}
+	s.record(r, func(ku *KeyUsage) { ku.Searches++ })
+
+	switch format {
+	case "markdown":
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		var b strings.Builder
+		fmt.Fprintf(&b, "# Results for %q _(via %s)_\n\n", res.Query, res.Provider)
+		for _, hit := range res.Results {
+			fmt.Fprintf(&b, "%d. **[%s](%s)**\n   > %s\n\n", hit.Position, hit.Title, hit.URL, hit.Snippet)
+		}
+		w.Write([]byte(b.String()))
+	case "json":
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(res)
+	default:
+		http.Error(w, `{"error":"format must be json or markdown"}`, http.StatusBadRequest)
+		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+	}
 }
 
+// GET /v1/fetch?url=&format=text|json|markdown
 func (s *Server) handleFetch(w http.ResponseWriter, r *http.Request) {
-	// TODO: not written out in the source chat — call s.engine.Fetch and
-	// render text/markdown/json per the ?format= param.
-	http.Error(w, "not implemented in source chat", http.StatusNotImplemented)
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	rawURL := strings.TrimSpace(r.URL.Query().Get("url"))
+	if rawURL == "" {
+		http.Error(w, `{"error":"missing url param"}`, http.StatusBadRequest)
+		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+		return
+	}
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "text"
+	}
+
+	page, err := s.engine.Fetch(r.Context(), rawURL)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadGateway)
+		s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
+		return
+	}
+	s.record(r, func(ku *KeyUsage) { ku.Fetches++ })
+
+	switch format {
+	case "json":
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(page)
+	case "markdown":
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		fmt.Fprintf(w, "# %s\n\n_Source: %s_\n\n%s\n", page.Title, page.URL, page.Text)
+	case "text":
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(page.Text))
+	default:
+		http.Error(w, `{"error":"format must be text, json, or markdown"}`, http.StatusBadRequest)
+		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+	}
 }
 
 // GET /v1/stream?url=... — Server-Sent Events of extracted text chunks.
@@ -72,6 +163,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	rawURL := r.URL.Query().Get("url")
 	if rawURL == "" {
 		http.Error(w, "missing url param", http.StatusBadRequest)
+		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
 		return
 	}
 	fl, ok := w.(http.Flusher)
@@ -82,6 +174,8 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+
+	s.record(r, func(ku *KeyUsage) { ku.Streams++ })
 
 	chunks, _, errCh := s.engine.FetchStream(r.Context(), rawURL)
 	for {
@@ -96,8 +190,11 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", b)
 			fl.Flush()
 		case err := <-errCh:
-			fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
-			fl.Flush()
+			if err != nil {
+				fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
+				fl.Flush()
+				s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
+			}
 			return
 		case <-r.Context().Done():
 			return

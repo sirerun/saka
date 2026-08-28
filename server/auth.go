@@ -2,12 +2,23 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+type ctxKey int
+
+const apiKeyCtxKey ctxKey = 1
+
+// APIKeyFromContext returns the Bearer API key set by AuthMiddleware, or "".
+func APIKeyFromContext(ctx context.Context) string {
+	s, _ := ctx.Value(apiKeyCtxKey).(string)
+	return s
+}
 
 // KeyTier defines a billing/usage tier.
 type KeyTier struct {
@@ -107,6 +118,7 @@ func AuthMiddleware(keys KeySource, next http.Handler) http.Handler {
 		}
 
 		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(tier.RPM))
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), apiKeyCtxKey, key)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

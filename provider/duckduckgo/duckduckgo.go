@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/you/saka"
+	"github.com/sirerun/saka/types"
 	"golang.org/x/net/html"
 )
 
@@ -33,7 +33,7 @@ func New() *Provider {
 
 func (p *Provider) Name() string { return "duckduckgo" }
 
-func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, error) {
+func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, error) {
 	form := url.Values{
 		"q":  {q.Text},
 		"kl": {regionOrDefault(q.Region)},
@@ -57,7 +57,7 @@ func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
-		return nil, &saka.RateLimitError{Provider: "duckduckgo", RetryAfter: 30 * time.Second}
+		return nil, &types.RateLimitError{Provider: "duckduckgo", RetryAfter: 30 * time.Second}
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("duckduckgo: status %d", resp.StatusCode)
@@ -75,19 +75,19 @@ func regionOrDefault(r string) string {
 
 // parseResults walks the DOM looking for result links: a.result__a
 // inside div.result, with snippet in a.result__snippet.
-func parseResults(r io.Reader, max int) ([]saka.Result, error) {
+func parseResults(r io.Reader, max int) ([]types.Result, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return nil, err
 	}
-	var results []saka.Result
+	var results []types.Result
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" && hasClass(n, "result__a") {
 			href := attr(n, "href")
 			target := unwrapDDG(href)
 			if target != "" && len(results) < max {
-				results = append(results, saka.Result{
+				results = append(results, types.Result{
 					Title: text(n),
 					URL:   target,
 				})
@@ -100,7 +100,7 @@ func parseResults(r io.Reader, max int) ([]saka.Result, error) {
 	walk(doc)
 
 	// attach snippets: they appear after each title link in document order.
-	var withSnips []saka.Result
+	var withSnips []types.Result
 	snips := collectSnippets(doc)
 	for i := range results {
 		if i < len(snips) {

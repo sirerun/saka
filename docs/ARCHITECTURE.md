@@ -349,7 +349,7 @@ Every fetching behavior in Saka is deliberate and inspectable:
 | Behavior | Implementation | Default |
 |---|---|---|
 | robots.txt compliance | fetched per host, groups for `*` and `SakaBot`, 1h cache | **on** |
-| Self-identification | `SakaBot/1.0 (+https://github.com/you/saka)` for robots matching | always |
+| Self-identification | `SakaBot/1.0 (+https://github.com/sirerun/saka)` for robots matching | always |
 | Self-throttling | token bucket: 1 RPS on DDG, 0.2 RPS on Startpage, 2 RPS on fetch | always |
 | Caching | L1 memory + optional L2 disk, TTL-based | on |
 | Backing off when challenged | challenge/429 → no retry, circuit breaker opens 30s | always |

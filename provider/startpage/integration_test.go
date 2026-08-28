@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	saka "github.com/you/saka"
-	// NOTE (source-chat gap): this imported "github.com/you/saka/internal/htmd",
+	types "github.com/sirerun/saka/types"
+	// NOTE (source-chat gap): this imported "github.com/sirerun/saka/internal/htmd",
 	// a shared-helpers package that startpage.go's own comment suggests
 	// creating ("extract to an internal package (saka/internal/htmd) so
 	// duckduckgo and startpage both use them") but that is never actually
 	// created anywhere in the chat. Commented out so this file at least
 	// compiles under `-tags=integration`; see NOTES.md.
-	// "github.com/you/saka/internal/htmd"
+	// "github.com/sirerun/saka/internal/htmd"
 )
 
 func TestLiveSearch(t *testing.T) {
@@ -23,9 +23,9 @@ func TestLiveSearch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	results, err := p.Search(ctx, saka.Query{Text: "startpage search engine", MaxResults: 5})
+	results, err := p.Search(ctx, types.Query{Text: "startpage search engine", MaxResults: 5})
 	if err != nil {
-		var rl *saka.RateLimitError
+		var rl *types.RateLimitError
 		if errors.As(err, &rl) {
 			t.Skip("startpage challenged us — expected under repeated CI runs, not a failure")
 		}

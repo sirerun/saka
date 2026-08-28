@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const articleFixture = `<!DOCTYPE html>
+var articleFixture = `<!DOCTYPE html>
 <html><head>
 <title>My Article</title>
 <meta property="og:title" content="OG Title">

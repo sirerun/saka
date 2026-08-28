@@ -28,8 +28,8 @@ changelog:
     exclude: ["^docs:", "^test:", "Merge pull request"]
 brews:
   - repository:
-      owner: you
+      owner: sirerun
       name: homebrew-tap
-    homepage: https://github.com/you/saka
+    homepage: https://github.com/sirerun/saka
     description: Free web search — no API keys, embeddable, MCP-ready
     license: Apache-2.0

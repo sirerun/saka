@@ -8,27 +8,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/you/saka/server"
+	"github.com/sirerun/saka/server"
 )
 
-// doKeys implements `saka keys` — generates Ed25519-signed API keys.
-//
-// NOTE (source-chat bugs, fixed): the chat's version called
-// `loadOrCreatePrivprivPath)` (missing the `(` — a dropped character) and
-// built the KeyPayload literal as
-//
-//	p := KeyPayload{
-//	    :   fmt.Sprintf("k_%s randHex(4)),
-//	    Tier: *tier,
-//	    N:    1,
-//	}
-//
-// which is missing the `ID:` field name, the comma/format-string close
-// around `randHex(4)`, and doesn't compile. Reconstructed to evident
-// intent below.
 func doKeys(args []string) {
 	fs := flag.NewFlagSet("keys", flag.ExitOnError)
 	tier := fs.String("tier", "free", "free|standard|pro")
@@ -58,13 +44,26 @@ func loadOrCreatePriv(path string) ed25519.PrivateKey {
 	if b, err := os.ReadFile(path); err == nil {
 		key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(b)))
 		fatalIf(err)
-		return ed25519.PrivateKey(key)
+		priv := ed25519.PrivateKey(key)
+		writePubBeside(path, priv)
+		return priv
 	}
 	_, priv, err := server.GenerateKeyPair()
 	fatalIf(err)
-	os.WriteFile(path, []byte(base64.StdEncoding.EncodeToString(priv)), 0o600)
+	fatalIf(os.WriteFile(path, []byte(base64.StdEncoding.EncodeToString(priv)), 0o600))
+	writePubBeside(path, priv)
 	fmt.Fprintf(os.Stderr, "generated new signing key at %s — back it up!\n", path)
 	return priv
+}
+
+func writePubBeside(privPath string, priv ed25519.PrivateKey) {
+	pub := priv.Public().(ed25519.PublicKey)
+	pubPath := strings.TrimSuffix(privPath, filepath.Ext(privPath)) + ".pub"
+	if filepath.Ext(privPath) == "" {
+		pubPath = privPath + ".pub"
+	}
+	_ = os.WriteFile(pubPath, []byte(base64.StdEncoding.EncodeToString(pub)), 0o644)
+	fmt.Fprintf(os.Stderr, "public key: %s (pass to saka serve --keys)\n", pubPath)
 }
 
 func fatalIf(err error) {
@@ -73,14 +72,8 @@ func fatalIf(err error) {
 	}
 }
 
-// randHex returns n random bytes hex-encoded. Referenced by doKeys in the
-// source chat but never defined there — added so this file compiles.
 func randHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
-
-// Usage:
-//   saka keys --tier pro --n 5 --exp-days 30
-//   # sk-1.eyJpZCI6ImtfxxxxIsInRpZXIiOiJwcm8i...  (×5)

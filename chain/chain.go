@@ -7,24 +7,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/you/saka"
-	"github.com/you/saka/ratelimit"
+	"github.com/sirerun/saka/ratelimit"
+	"github.com/sirerun/saka/types"
 )
 
 type entry struct {
-	provider  saka.Provider
+	provider  types.Provider
 	limiter   *ratelimit.Limiter
 	retries   int
 	fails     int
 	openUntil time.Time
 }
 
+// Chain orchestrates provider fallback with breakers and rate limits.
 type Chain struct {
 	mu      sync.Mutex
 	entries []*entry
 }
 
-func New(cfgs []saka.ProviderConfig, ps []saka.Provider) *Chain {
+// New builds a Chain from matching config entries and providers.
+func New(cfgs []types.ProviderConfig, ps []types.Provider) *Chain {
 	c := &Chain{}
 	for _, cfg := range cfgs {
 		for _, p := range ps {
@@ -44,13 +46,13 @@ const breakerThreshold = 3
 const breakerCooldown = 30 * time.Second
 
 // Search tries each provider in order; skips open breakers; retries with backoff.
-func (c *Chain) Search(ctx context.Context, q saka.Query) (*saka.Results, error) {
+func (c *Chain) Search(ctx context.Context, q types.Query) (*types.Results, error) {
 	start := time.Now()
 	for _, e := range c.entries {
 		if c.isOpen(e) {
 			continue
 		}
-		var results []saka.Result
+		var results []types.Result
 		var err error
 		for attempt := 0; attempt <= e.retries; attempt++ {
 			if err = e.limiter.Wait(ctx); err != nil {
@@ -59,7 +61,7 @@ func (c *Chain) Search(ctx context.Context, q saka.Query) (*saka.Results, error)
 			results, err = e.provider.Search(ctx, q)
 			if err == nil {
 				c.recordSuccess(e)
-				return &saka.Results{
+				return &types.Results{
 					Query:    q.Text,
 					Results:  results,
 					Provider: e.provider.Name(),
@@ -67,9 +69,8 @@ func (c *Chain) Search(ctx context.Context, q saka.Query) (*saka.Results, error)
 				}, nil
 			}
 			if isRateLimit(err) {
-				break // don't retry a rate-limited provider — fall through
+				break
 			}
-			// backoff with jitter
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -80,11 +81,11 @@ func (c *Chain) Search(ctx context.Context, q saka.Query) (*saka.Results, error)
 			c.recordFailure(e)
 		}
 	}
-	return nil, saka.ErrNoResults
+	return nil, types.ErrNoResults
 }
 
 func isRateLimit(err error) bool {
-	_, ok := err.(*saka.RateLimitError)
+	_, ok := err.(*types.RateLimitError)
 	return ok
 }
 

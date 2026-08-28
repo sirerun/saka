@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	saka "github.com/you/saka"
+	saka "github.com/sirerun/saka"
 )
 
 type fakeSearcher struct{}

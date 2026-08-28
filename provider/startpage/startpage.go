@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	saka "github.com/you/saka"
+	types "github.com/sirerun/saka/types"
 	"golang.org/x/net/html"
 )
 
@@ -39,7 +39,7 @@ func New() *Provider {
 
 func (p *Provider) Name() string { return "startpage" }
 
-func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, error) {
+func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, error) {
 	params := url.Values{
 		"query":    {q.Text},
 		"cat":      {"web"},
@@ -70,7 +70,7 @@ func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, err
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests, http.StatusForbidden:
 		// Startpage sends CAPTCHA/challenge pages as 200 too — checked in parse.
-		return nil, &saka.RateLimitError{Provider: "startpage", RetryAfter: time.Minute}
+		return nil, &types.RateLimitError{Provider: "startpage", RetryAfter: time.Minute}
 	case http.StatusOK:
 	default:
 		return nil, fmt.Errorf("startpage: status %d", resp.StatusCode)
@@ -83,7 +83,7 @@ func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, err
 	// Challenge pages parse to zero results — treat as rate limit so
 	// the chain falls back and the breaker opens.
 	if len(results) == 0 {
-		return nil, &saka.RateLimitError{Provider: "startpage", RetryAfter: time.Minute}
+		return nil, &types.RateLimitError{Provider: "startpage", RetryAfter: time.Minute}
 	}
 	return results, nil
 }
@@ -97,12 +97,12 @@ func langOrDefault(r string) string {
 
 // parseResults: results live in section.w-gl > a.w-gl__result-title (href is
 // a direct URL) with snippet in p.w-gl__description. One walk collects both.
-func parseResults(r io.Reader, max int) ([]saka.Result, error) {
+func parseResults(r io.Reader, max int) ([]types.Result, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return nil, err
 	}
-	var results []saka.Result
+	var results []types.Result
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
@@ -111,7 +111,7 @@ func parseResults(r io.Reader, max int) ([]saka.Result, error) {
 			if strings.Contains(cls, "w-gl__result-title") && len(results) < max {
 				href := attrOf(n, "href")
 				if strings.HasPrefix(href, "http") {
-					results = append(results, saka.Result{
+					results = append(results, types.Result{
 						Title:  textOf(n),
 						URL:    href,
 						Source: "startpage",
