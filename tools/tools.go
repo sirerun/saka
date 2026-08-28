@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	saka "github.com/you/saka"
+	saka "github.com/sirerun/saka"
 )
 
 // ---- JSON Schema definitions (shared by OpenAI and Anthropic) ----

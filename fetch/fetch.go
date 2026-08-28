@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/you/saka"
-	"github.com/you/saka/ratelimit"
+	"github.com/sirerun/saka/ratelimit"
+	"github.com/sirerun/saka/types"
 )
 
-const botUserAgent = "SakaBot/1.0 (+https://github.com/you/saka)"
+const botUserAgent = "SakaBot/1.0 (+https://github.com/sirerun/saka)"
 
 type Fetcher struct {
 	client        *http.Client
@@ -28,7 +28,7 @@ type Fetcher struct {
 }
 
 type cacheEntry struct {
-	page      *saka.Page
+	page      *types.Page
 	expiresAt time.Time
 }
 
@@ -52,7 +52,7 @@ func (f *Fetcher) SetDiskCache(dc *DiskCache) {
 }
 
 // Fetch retrieves a URL and extracts readable article text.
-func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (*saka.Page, error) {
+func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (*types.Page, error) {
 	if _, err := url.Parse(rawURL); err != nil {
 		return nil, fmt.Errorf("fetch: bad url: %w", err)
 	}
@@ -121,8 +121,8 @@ func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (*saka.Page, error) 
 
 // FetchStream fetches a URL and streams text chunks as they are extracted.
 // The done channel delivers the fully assembled page for caching.
-func (f *Fetcher) FetchStream(ctx context.Context, rawURL string) (<-chan saka.Chunk, <-chan *saka.Page, <-chan error) {
-	ch, done, errc2 := make(chan saka.Chunk, 16), make(chan *saka.Page, 1), make(chan error, 1)
+func (f *Fetcher) FetchStream(ctx context.Context, rawURL string) (<-chan types.Chunk, <-chan *types.Page, <-chan error) {
+	ch, done, errc2 := make(chan types.Chunk, 16), make(chan *types.Page, 1), make(chan error, 1)
 
 	go func() {
 		defer close(ch)

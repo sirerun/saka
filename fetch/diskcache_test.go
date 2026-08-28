@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	saka "github.com/you/saka"
+	types "github.com/sirerun/saka/types"
 )
 
 func TestDiskCacheRoundTrip(t *testing.T) {
@@ -12,7 +12,7 @@ func TestDiskCacheRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	page := &saka.Page{URL: "https://x", Title: "T", Text: "hello"}
+	page := &types.Page{URL: "https://x", Title: "T", Text: "hello"}
 	dc.Put(page.URL, page)
 
 	got, ok := dc.Get("https://x")
@@ -23,7 +23,7 @@ func TestDiskCacheRoundTrip(t *testing.T) {
 
 func TestDiskCacheExpiry(t *testing.T) {
 	dc, _ := NewDiskCache(t.TempDir(), time.Millisecond)
-	dc.Put("https://x", &saka.Page{URL: "https://x", Text: "t"})
+	dc.Put("https://x", &types.Page{URL: "https://x", Text: "t"})
 	time.Sleep(5 * time.Millisecond)
 	if _, ok := dc.Get("https://x"); ok {
 		t.Error("expired entry returned")
@@ -32,8 +32,8 @@ func TestDiskCacheExpiry(t *testing.T) {
 
 func TestDiskCacheDifferentURLsDontCollide(t *testing.T) {
 	dc, _ := NewDiskCache(t.TempDir(), time.Hour)
-	dc.Put("https://a.com", &saka.Page{URL: "https://a.com", Text: "A"})
-	dc.Put("https://b.com", &saka.Page{URL: "https://b.com", Text: "B"})
+	dc.Put("https://a.com", &types.Page{URL: "https://a.com", Text: "A"})
+	dc.Put("https://b.com", &types.Page{URL: "https://b.com", Text: "B"})
 	a, _ := dc.Get("https://a.com")
 	b, _ := dc.Get("https://b.com")
 	if a.Text != "A" || b.Text != "B" {

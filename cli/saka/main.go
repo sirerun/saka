@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,8 +11,8 @@ import (
 	"os"
 	"strings"
 
-	saka "github.com/you/saka"
-	"github.com/you/saka/server"
+	saka "github.com/sirerun/saka"
+	"github.com/sirerun/saka/server"
 )
 
 func main() {
@@ -19,20 +21,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	var cfgPath string
-	fs := flag.NewFlagSet("", flag.ExitOnError)
-	fs.StringVar(&cfgPath, "config", "", "path to saka.json")
-
 	cmd := os.Args[1]
-	fs.Parse(os.Args[2:]) // consume global flags if present
+	args := os.Args[2:]
 
-	// `keys` doesn't need an engine — handle it before constructing one.
 	if cmd == "keys" {
-		doKeys(fs.Args())
+		doKeys(args)
 		return
 	}
 
-	ctx := context.Background()
+	switch cmd {
+	case "search":
+		doSearch(args)
+	case "fetch":
+		doFetch(args)
+	case "serve":
+		doServe(args)
+	default:
+		usage()
+		os.Exit(1)
+	}
+}
+
+func loadEngine(cfgPath string) saka.Searcher {
 	cfg := saka.DefaultConfig()
 	if cfgPath != "" {
 		var err error
@@ -45,22 +55,12 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-
-	switch cmd {
-	case "search":
-		doSearch(ctx, engine, fs.Args())
-	case "fetch":
-		doFetch(ctx, engine, fs.Args())
-	case "serve":
-		doServe(ctx, engine, fs.Args())
-	default:
-		usage()
-		os.Exit(1)
-	}
+	return engine
 }
 
-func doSearch(ctx context.Context, e saka.Searcher, args []string) {
+func doSearch(args []string) {
 	fs := flag.NewFlagSet("search", flag.ExitOnError)
+	cfgPath := fs.String("config", "", "path to saka.json")
 	n := fs.Int("n", 10, "max results")
 	format := fs.String("format", "table", "table|json|markdown")
 	site := fs.String("site", "", "restrict to site")
@@ -69,7 +69,8 @@ func doSearch(ctx context.Context, e saka.Searcher, args []string) {
 		fatal(fmt.Errorf("usage: saka search [flags] \"query\""))
 	}
 
-	res, err := e.Search(ctx, saka.Query{
+	e := loadEngine(*cfgPath)
+	res, err := e.Search(context.Background(), saka.Query{
 		Text:       strings.Join(fs.Args(), " "),
 		MaxResults: *n,
 		Site:       *site,
@@ -95,15 +96,17 @@ func doSearch(ctx context.Context, e saka.Searcher, args []string) {
 	}
 }
 
-func doFetch(ctx context.Context, e saka.Searcher, args []string) {
+func doFetch(args []string) {
 	fs := flag.NewFlagSet("fetch", flag.ExitOnError)
+	cfgPath := fs.String("config", "", "path to saka.json")
 	format := fs.String("format", "text", "text|json|markdown")
 	fs.Parse(args)
 	if fs.NArg() != 1 {
 		fatal(fmt.Errorf("usage: saka fetch [flags] <url>"))
 	}
 
-	page, err := e.Fetch(ctx, fs.Arg(0))
+	e := loadEngine(*cfgPath)
+	page, err := e.Fetch(context.Background(), fs.Arg(0))
 	if err != nil {
 		fatal(err)
 	}
@@ -120,14 +123,17 @@ func doFetch(ctx context.Context, e saka.Searcher, args []string) {
 	}
 }
 
-// doServe was added in the v0.2 pass ("CLI wiring (saka serve --mcp)")
-// and gained --keys in the v1.1 "paid vs free" pass.
-func doServe(ctx context.Context, e saka.Searcher, args []string) {
+func doServe(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	cfgPath := fs.String("config", "", "path to saka.json")
 	mcp := fs.Bool("mcp", false, "serve over stdio as an MCP server")
 	addr := fs.String("addr", ":8080", "HTTP listen address")
-	keysPath := fs.String("keys", "", "path to api_keys.json (enables auth)")
+	keysPath := fs.String("keys", "", "path to ed25519 public key (enables signed-key auth)")
+	adminKey := fs.String("admin-key", "", "admin Bearer token for full /v1/usage dump")
 	fs.Parse(args)
+
+	e := loadEngine(*cfgPath)
+	ctx := context.Background()
 
 	if *mcp {
 		if err := server.NewMCP(e).ServeStdio(ctx); err != nil {
@@ -136,21 +142,33 @@ func doServe(ctx context.Context, e saka.Searcher, args []string) {
 		return
 	}
 
-	opts := server.Options{}
+	opts := server.Options{AdminKey: *adminKey}
 	if *keysPath != "" {
-		b, err := os.ReadFile(*keysPath)
+		pub, err := loadPublicKey(*keysPath)
 		if err != nil {
 			fatal(err)
 		}
-		var keys map[string]string // {"sk-...": "pro", ...}
-		if err := json.Unmarshal(b, &keys); err != nil {
-			fatal(err)
-		}
-		opts.Keys = server.StaticKeys(keys)
+		opts.Keys = server.SignedKeys{Pub: pub}
+		opts.Usage = server.NewUsageStats()
 	}
-	h := server.NewWithOptions(e, opts).Handler() // REST API, from v0.2 + v1.1 auth
+	h := server.NewWithOptions(e, opts).Handler()
 	fmt.Printf("saka listening on %s\n", *addr)
 	fatal(http.ListenAndServe(*addr, h))
+}
+
+func loadPublicKey(path string) (ed25519.PublicKey, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(b)))
+	if err != nil {
+		return nil, fmt.Errorf("decode public key: %w", err)
+	}
+	if len(raw) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("public key must be %d bytes, got %d", ed25519.PublicKeySize, len(raw))
+	}
+	return ed25519.PublicKey(raw), nil
 }
 
 func fatal(err error) {
@@ -162,12 +180,9 @@ func usage() {
 	fmt.Fprint(os.Stderr, `saka — free web search, no API keys
 
 Usage:
-  saka search "query" [-n 10] [--format table|json|markdown] [--site example.com]
-  saka fetch <url> [--format text|json|markdown]
-  saka serve [--addr :8080] [--mcp] [--config saka.json] [--keys api_keys.json]
+  saka search "query" [-n 10] [--format table|json|markdown] [--site example.com] [--config saka.json]
+  saka fetch <url> [--format text|json|markdown] [--config saka.json]
+  saka serve [--addr :8080] [--mcp] [--config saka.json] [--keys saka_ed25519.pub] [--admin-key TOKEN]
   saka keys [--tier free|standard|pro] [--n 1] [--exp-days 365] [--priv path]
-
-Flags:
-  --config saka.json   configuration file
 `)
 }

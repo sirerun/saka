@@ -6,28 +6,18 @@ Free web search for Go and AI. No API keys. Single binary.
 ships as a CLI, exposes REST + MCP servers, and speaks OpenAI/Anthropic
 tool-calling natively.
 
-This tree is a direct transcription of the "saka" Go library/CLI worked
-out over your Ox Alpha chat, v0.1 through v1.2 (core search → SearXNG +
-MCP + tool schemas → streaming/distribution/tests → robots.txt,
-Startpage, config validation, disk cache, Docker/Compose deploy → paid
-API keys, per-key usage tracking, CI/CD). Every `.go`/`.yaml`/`.json`
-file here comes from a code block in that conversation, organized into
-the package layout the chat itself described.
-
-**Read `NOTES.md` before running `go build` or `go test` — the chat's
-own code has real gaps and inconsistencies (a circular import between
-`saka` and its subpackages chief among them, plus a couple of REST
-handlers that were described but never written) that need a decision
-before this compiles end to end.**
+Module: `github.com/sirerun/saka`. See [`NOTES.md`](NOTES.md) for the
+v1 production-ready status and remaining scaffolding (billing is
+in-memory only; no Stripe).
 
 ## Install
 
 ```sh
 curl -sL https://getsaka.dev | sh   # see NOTES.md — reconstructed, verify before use
 # or
-brew install you/tap/saka
+brew install sirerun/tap/saka
 # or
-go install github.com/you/saka/cli/saka@latest
+go install github.com/sirerun/saka/cli/saka@latest
 ```
 
 ## CLI
@@ -37,7 +27,7 @@ saka search "best open source LLMs" -n 5 --markdown
 saka fetch https://example.com/article --format text
 saka serve --addr :8080                    # REST API
 saka serve --mcp                           # MCP over stdio (Claude Desktop, etc.)
-saka serve --addr :8080 --keys api_keys.json  # REST API with auth (paid mode)
+saka serve --addr :8080 --keys saka_ed25519.pub  # REST API with signed-key auth
 saka keys --tier pro --n 5 --exp-days 30   # generate signed API keys
 ```
 
@@ -112,7 +102,7 @@ mux.Handle("/v1/", sakaserver.New(engine).Handler())
 ## Self-hosted stack (Docker Compose)
 
 ```sh
-git clone https://github.com/you/saka && cd saka
+git clone https://github.com/sirerun/saka && cd saka
 docker compose up -d
 
 # verify:
@@ -128,7 +118,7 @@ Brings up `saka` + a private `searxng` instance on an internal network
 
 `saka keys` generates Ed25519-signed API keys, verified offline (no DB
 lookup needed at request time — see `server/keys.go`). `saka serve --keys
-api_keys.json` enables `AuthMiddleware`, per-tier rate limits (free /
+saka_ed25519.pub` enables `AuthMiddleware`, per-tier rate limits (free /
 standard / pro), and `/v1/usage` billing stats. This is scaffolding, not
 a finished billing system — see `NOTES.md` for what's still stubbed.
 
@@ -153,7 +143,7 @@ goreleaser release --snapshot            # local build
 
 ```
 saka/
-├── saka.go, errors.go, config_test.go, saka_test.go, smoke_test.go
+├── saka.go, types/, config_test.go, saka_test.go, smoke_test.go
 ├── ratelimit/ratelimit.go
 ├── provider/
 │   ├── duckduckgo/       # HTML-scraping provider (no key)

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/you/saka"
+	"github.com/sirerun/saka/types"
 )
 
 type DiskCache struct {
@@ -33,7 +33,7 @@ func (c *DiskCache) key(rawURL string) string {
 	return filepath.Join(c.dir, name[:2], name+".json")
 }
 
-func (c *DiskCache) Get(rawURL string) (*saka.Page, bool) {
+func (c *DiskCache) Get(rawURL string) (*types.Page, bool) {
 	path := c.key(rawURL)
 	info, err := os.Stat(path)
 	if err != nil || time.Since(info.ModTime()) > c.ttl {
@@ -46,7 +46,7 @@ func (c *DiskCache) Get(rawURL string) (*saka.Page, bool) {
 	if err != nil {
 		return nil, false
 	}
-	var page saka.Page
+	var page types.Page
 	if err := json.Unmarshal(b, &page); err != nil {
 		os.Remove(path) // corrupt entry — drop it
 		return nil, false
@@ -54,7 +54,7 @@ func (c *DiskCache) Get(rawURL string) (*saka.Page, bool) {
 	return &page, true
 }
 
-func (c *DiskCache) Put(rawURL string, page *saka.Page) {
+func (c *DiskCache) Put(rawURL string, page *types.Page) {
 	b, err := json.Marshal(page)
 	if err != nil {
 		return

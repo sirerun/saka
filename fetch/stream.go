@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/you/saka"
+	"github.com/sirerun/saka/types"
 	"golang.org/x/net/html"
 )
 
@@ -16,12 +16,12 @@ const streamChunkSize = 900 // ~900 chars per chunk: good granularity for LLM co
 // The final, complete page is delivered via the done channel (or an error).
 //
 // NOTE (source-chat bug, preserved verbatim): this sets the unexported
-// saka.Page.text field from package fetch, and calls collectAllText,
+// types.Page.text field from package fetch, and calls collectAllText,
 // which is never defined anywhere in the source chat. Neither compiles
 // as given — see NOTES.md.
-func ExtractStream(rawURL string, body io.Reader) (chunks <-chan saka.Chunk, done <-chan *saka.Page, errc <-chan error) {
-	ch := make(chan saka.Chunk, 16)
-	doneCh := make(chan *saka.Page, 1)
+func ExtractStream(rawURL string, body io.Reader) (chunks <-chan types.Chunk, done <-chan *types.Page, errc <-chan error) {
+	ch := make(chan types.Chunk, 16)
+	doneCh := make(chan *types.Page, 1)
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -49,7 +49,7 @@ func ExtractStream(rawURL string, body io.Reader) (chunks <-chan saka.Chunk, don
 			if buf.Len() == 0 {
 				return
 			}
-			ch <- saka.Chunk{Text: buf.String(), Seq: seq}
+			ch <- types.Chunk{Text: buf.String(), Seq: seq}
 			seq++
 			buf.Reset()
 		}
@@ -81,7 +81,7 @@ func ExtractStream(rawURL string, body io.Reader) (chunks <-chan saka.Chunk, don
 		walk(best)
 		flush()
 
-		page := &saka.Page{
+		page := &types.Page{
 			URL:         rawURL,
 			Title:       title,
 			PublishedAt: published,

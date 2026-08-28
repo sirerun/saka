@@ -1,4 +1,4 @@
-module github.com/you/saka
+module github.com/sirerun/saka
 
 go 1.22
 

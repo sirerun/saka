@@ -12,7 +12,7 @@
 # against the actual release layout before using it.
 set -eu
 
-REPO="you/saka"
+REPO="sirerun/saka"
 VERSION="${SAKA_VERSION:-latest}"
 
 os=$(uname -s)

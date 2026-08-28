@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	saka "github.com/you/saka"
+	types "github.com/sirerun/saka/types"
 )
 
 type Provider struct {
@@ -37,7 +37,7 @@ type searxResponse struct {
 	} `json:"results"`
 }
 
-func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, error) {
+func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, error) {
 	params := url.Values{
 		"q":        {q.Text},
 		"format":   {"json"},
@@ -70,7 +70,7 @@ func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, err
 
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests, http.StatusForbidden:
-		return nil, &saka.RateLimitError{Provider: "searxng", RetryAfter: 30 * time.Second}
+		return nil, &types.RateLimitError{Provider: "searxng", RetryAfter: 30 * time.Second}
 	case http.StatusOK:
 		// continue
 	default:
@@ -82,12 +82,12 @@ func (p *Provider) Search(ctx context.Context, q saka.Query) ([]saka.Result, err
 		return nil, fmt.Errorf("searxng: decode: %w", err)
 	}
 
-	out := make([]saka.Result, 0, len(sr.Results))
+	out := make([]types.Result, 0, len(sr.Results))
 	for i, r := range sr.Results {
 		if i >= q.MaxResults {
 			break
 		}
-		out = append(out, saka.Result{
+		out = append(out, types.Result{
 			Title:    r.Title,
 			URL:      r.URL,
 			Snippet:  r.Content,

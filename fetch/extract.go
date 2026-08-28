@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/you/saka"
+	"github.com/sirerun/saka/types"
 	"golang.org/x/net/html"
 )
 
@@ -19,7 +19,7 @@ var skipTags = map[string]bool{
 // Extract parses HTML and pulls out the dominant readable text (readability-style).
 func Extract(rawURL string, r interface {
 	Read([]byte) (int, error)
-}) (*saka.Page, error) {
+}) (*types.Page, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return nil, fmt.Errorf("extract: parse: %w", err)
@@ -39,7 +39,7 @@ func Extract(rawURL string, r interface {
 	collectText(best, &sb)
 	text := normalize(sb.String())
 
-	return &saka.Page{
+	return &types.Page{
 		URL:         rawURL,
 		Title:       title,
 		Text:        text,
