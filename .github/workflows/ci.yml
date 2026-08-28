@@ -1,0 +1,51 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - name: Vet
+        run: go vet ./...
+      - name: Test (race + cover)
+        run: go test ./... -race -coverprofile=coverage.out
+      - name: Coverage gate
+        # NOTE (source-chat bug, fixed): this step's shell line was
+        # corrupted in the chat page's own rendering — it showed the
+        # `$(...)`/`${...}` substitutions nested and duplicated 2-3 times
+        # over (the same rendering bug as install.sh — see NOTES.md).
+        # Reconstructed to evident intent below.
+        run: |
+          cov=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "coverage: $cov%"
+          [ "$(echo "$cov >= 70" | bc)" = 1 ] || { echo "coverage below 70%"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with: { name: coverage, path: coverage.out }
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - uses: golangci/golangci-lint-action@v6
+        with: { version: latest }
+
+  build-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t saka:ci .
+      - name: Smoke the compose stack
+        run: |
+          cp deploy/searx/settings.yml /tmp/ 2>/dev/null || true
+          docker compose up -d
+          sleep 20
+          ./deploy/smoke.sh
+          docker compose down

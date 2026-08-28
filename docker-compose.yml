@@ -1,0 +1,39 @@
+name: saka-stack
+
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: saka-searxng
+    volumes:
+      - ./deploy/searxng:/etc/searxng:rw
+    # No ports exposed: only saka can reach it (internal network).
+    restart: unless-stopped
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp
+
+  saka:
+    build: .
+    container_name: saka
+    depends_on: [searxng]
+    ports:
+      - "8080:8080"
+    volumes:
+      - saka-cache:/home/saka/.cache/saka
+      # NOTE (added — see NOTES.md): the source chat set SAKA_CONFIG below
+      # but saka's CLI only ever reads a config path from --config, not an
+      # env var, and nothing mounted deploy/saka.json into the container.
+      # This volume + command line make the two agree.
+      - ./deploy/saka.json:/etc/saka/saka.json:ro
+    command: ["serve", "--addr", ":8080", "--config", "/etc/saka/saka.json"]
+    # Optional paid mode:
+    # command: ["serve", "--addr", ":8080", "--config", "/etc/saka/saka.json", "--keys", "/run/keys/api_keys.json"]
+    # secrets: [api_keys]
+    restart: unless-stopped
+
+volumes:
+  saka-cache:
+
+# secrets:
+#   api_keys:
+#     file: ./deploy/api_keys.json

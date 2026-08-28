@@ -1,0 +1,8 @@
+use_default_settings: true
+server:
+  secret_key: "CHANGE_ME_searxng_secret"   # generate: openssl rand -hex 32
+  limiter: false   # internal-only; the network is not exposed
+search:
+  formats:
+    - html
+    - json        # REQUIRED for saka's searxng provider
