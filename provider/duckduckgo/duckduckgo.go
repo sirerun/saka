@@ -54,7 +54,7 @@ func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, e
 	if err != nil {
 		return nil, fmt.Errorf("duckduckgo: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
 		return nil, &types.RateLimitError{Provider: "duckduckgo", RetryAfter: 30 * time.Second}

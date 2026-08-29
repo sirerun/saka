@@ -47,7 +47,7 @@ func (s *Server) Handler() http.Handler {
 		mux.Handle("/v1/usage", s.opts.Usage.Handler(s.opts.AdminKey))
 	}
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	if s.opts.Keys == nil {
 		return mux
@@ -126,10 +126,10 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		for _, hit := range res.Results {
 			fmt.Fprintf(&b, "%d. **[%s](%s)**\n   > %s\n\n", hit.Position, hit.Title, hit.URL, hit.Snippet)
 		}
-		w.Write([]byte(b.String()))
+		_, _ = w.Write([]byte(b.String()))
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
+		_ = json.NewEncoder(w).Encode(res)
 	default:
 		http.Error(w, `{"error":"format must be json or markdown"}`, http.StatusBadRequest)
 		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
@@ -164,13 +164,13 @@ func (s *Server) handleFetch(w http.ResponseWriter, r *http.Request) {
 	switch format {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(page)
+		_ = json.NewEncoder(w).Encode(page)
 	case "markdown":
 		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
-		fmt.Fprintf(w, "# %s\n\n_Source: %s_\n\n%s\n", page.Title, page.URL, page.Text)
+		_, _ = fmt.Fprintf(w, "# %s\n\n_Source: %s_\n\n%s\n", page.Title, page.URL, page.Text)
 	case "text":
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(page.Text))
+		_, _ = w.Write([]byte(page.Text))
 	default:
 		http.Error(w, `{"error":"format must be text, json, or markdown"}`, http.StatusBadRequest)
 		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
@@ -201,16 +201,16 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		select {
 		case c, ok := <-chunks:
 			if !ok {
-				fmt.Fprint(w, "event: done\ndata: {}\n\n")
+				_, _ = fmt.Fprint(w, "event: done\ndata: {}\n\n")
 				fl.Flush()
 				return
 			}
 			b, _ := json.Marshal(c)
-			fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", b)
+			_, _ = fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", b)
 			fl.Flush()
 		case err := <-errCh:
 			if err != nil {
-				fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
+				_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
 				fl.Flush()
 				s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
 			}
