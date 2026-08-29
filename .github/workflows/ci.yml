@@ -81,7 +81,6 @@ jobs:
         run: |
           chmod +x deploy/smoke.sh
           helm install saka deploy/helm/saka \
-            --namespace saka --create-namespace \
             --set image.repository=saka \
             --set image.tag=ci
           kubectl -n saka wait --for=condition=available deploy/searxng --timeout=180s
