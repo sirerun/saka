@@ -122,6 +122,30 @@ For production, point `SAKA_IMAGE` at your registry tag and apply the
 same manifests (rotate the SearXNG `secret_key` in
 `deploy/k8s/searxng.yaml` first).
 
+### Helm chart
+
+The same stack is also packaged as a chart under
+[`deploy/helm/saka/`](deploy/helm/saka/), for clusters that prefer Helm
+over plain manifests:
+
+```sh
+docker build -t saka:local .
+kind load docker-image saka:local          # or push to your registry
+
+helm install saka deploy/helm/saka \
+  --set image.repository=saka \
+  --set image.tag=local
+
+kubectl -n saka port-forward svc/saka 8080:8080
+
+curl "http://127.0.0.1:8080/v1/search?q=open+source+llm&format=json" | jq '.provider'
+SAKA_BASE_URL=http://127.0.0.1:8080 ./deploy/smoke.sh
+```
+
+For production, override `image.repository`/`image.tag` with your
+registry tag and rotate the SearXNG `secret_key` via
+`--set searxng.settings=...` (or a values file) first.
+
 ## Paid-service groundwork
 
 `saka keys` generates Ed25519-signed API keys, verified offline (no DB
