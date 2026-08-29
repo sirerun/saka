@@ -11,9 +11,9 @@ import (
 
 	"github.com/sirerun/saka/chain"
 	"github.com/sirerun/saka/fetch"
-	"github.com/sirerun/saka/provider/duckduckgo"
-	"github.com/sirerun/saka/provider/searxng"
-	"github.com/sirerun/saka/provider/startpage"
+	_ "github.com/sirerun/saka/provider/duckduckgo"
+	_ "github.com/sirerun/saka/provider/searxng"
+	_ "github.com/sirerun/saka/provider/startpage"
 	"github.com/sirerun/saka/types"
 )
 
@@ -87,17 +87,16 @@ func (c Config) Validate() error {
 			return fmt.Errorf("saka: providers[%d]: duplicate provider %q", i, p.Name)
 		}
 		seen[p.Name] = true
-		switch p.Name {
-		case "duckduckgo", "startpage":
-		case "searxng":
+		if _, ok := types.Lookup(p.Name); !ok {
+			return fmt.Errorf("saka: providers[%d]: provider %q is not registered (known: %s)", i, p.Name, strings.Join(types.Registered(), ", "))
+		}
+		if p.Name == "searxng" {
 			if p.URL == "" {
 				return fmt.Errorf("saka: providers[%d]: searxng requires \"url\"", i)
 			}
 			if !strings.HasPrefix(p.URL, "http") {
 				return fmt.Errorf("saka: providers[%d]: searxng url must start with http(s)", i)
 			}
-		default:
-			return fmt.Errorf("saka: providers[%d]: unknown provider %q (known: duckduckgo, searxng, startpage)", i, p.Name)
 		}
 		if p.RPS < 0 || p.RPS > 10 {
 			return fmt.Errorf("saka: providers[%d]: rps must be 0-10 (got %v)", i, p.RPS)
@@ -153,19 +152,15 @@ func New(cfg Config) (*Engine, error) {
 
 	var ps []Provider
 	for _, pc := range cfg.Providers {
-		switch pc.Name {
-		case "duckduckgo":
-			ps = append(ps, duckduckgo.New())
-		case "searxng":
-			if pc.URL == "" {
-				return nil, fmt.Errorf("saka: searxng provider requires url")
-			}
-			ps = append(ps, searxng.New(pc.URL))
-		case "startpage":
-			ps = append(ps, startpage.New())
-		default:
-			return nil, fmt.Errorf("saka: unknown provider %q", pc.Name)
+		factory, ok := types.Lookup(pc.Name)
+		if !ok {
+			return nil, fmt.Errorf("saka: provider %q is not registered", pc.Name)
 		}
+		p, err := factory(pc)
+		if err != nil {
+			return nil, fmt.Errorf("saka: provider %q: %w", pc.Name, err)
+		}
+		ps = append(ps, p)
 	}
 	ttl := time.Duration(cfg.Fetch.CacheTTLSeconds) * time.Second
 	fetcher := fetch.New(cfg.Fetch.RPS, ttl, cfg.Fetch.RespectRobots)

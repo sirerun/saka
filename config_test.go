@@ -1,6 +1,9 @@
 package saka
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidate(t *testing.T) {
 	cases := []struct {
@@ -33,5 +36,16 @@ func TestValidate(t *testing.T) {
 		if err := c.cfg.Validate(); (err != nil) != c.wantErr {
 			t.Errorf("%s: Validate() err = %v, wantErr %v", c.name, err, c.wantErr)
 		}
+	}
+}
+
+func TestValidateUnregisteredProviderErrorText(t *testing.T) {
+	cfg := Config{Providers: []ProviderConfig{{Name: "google"}}}
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for unregistered provider")
+	}
+	if !strings.Contains(err.Error(), "not registered") {
+		t.Errorf("error should name the provider as unregistered, got: %v", err)
 	}
 }
