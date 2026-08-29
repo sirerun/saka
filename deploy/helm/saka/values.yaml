@@ -2,19 +2,21 @@ namespace:
   create: true
   name: saka
 
+image:
+  repository: saka
+  tag: local
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: "1"
+    memory: 256Mi
+
 saka:
-  image:
-    repository: saka
-    tag: local
-    pullPolicy: IfNotPresent
   replicas: 1
-  resources:
-    requests:
-      cpu: 25m
-      memory: 64Mi
-    limits:
-      cpu: "1"
-      memory: 256Mi
   config: |
     {
       "providers": [
