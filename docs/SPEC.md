@@ -237,7 +237,7 @@ Keyless mode (self-hosted) has no auth.
 - Offline suite: `go test ./... -race -cover` — fixture-based tests for
   DDG/Startpage parsers, extractor, chunking, chain fallback/breaker,
   disk cache, MCP round-trip, tool dispatcher, config validation.
-  Coverage gate: ≥40%, the real enforced floor rather than an aspirational
+  Coverage gate: ≥55%, the real enforced floor rather than an aspirational
   number — see `docs/adr/002-coverage-gate-honesty.md` for the raise plan.
 - Integration suite (`-tags=integration`): live DDG, Startpage (challenge
   = skip, not fail), fetch/extract/stream against example.com, cache-hit
