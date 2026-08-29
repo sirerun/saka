@@ -15,21 +15,21 @@ resources:
     cpu: "1"
     memory: 256Mi
 
-saka:
-  replicas: 1
-  config: |
-    {
-      "providers": [
-        { "name": "searxng", "url": "http://searxng:8080", "rps": 5, "retries": 2 },
-        { "name": "duckduckgo", "rps": 1, "retries": 2 }
-      ],
-      "fetch": {
-        "rps": 2,
-        "cache_ttl_seconds": 3600,
-        "respect_robots": true,
-        "disk_cache": { "dir": "/home/saka/.cache/saka", "ttl_seconds": 86400 }
-      }
+replicas: 1
+
+config: |
+  {
+    "providers": [
+      { "name": "searxng", "url": "http://searxng:8080", "rps": 5, "retries": 2 },
+      { "name": "duckduckgo", "rps": 1, "retries": 2 }
+    ],
+    "fetch": {
+      "rps": 2,
+      "cache_ttl_seconds": 3600,
+      "respect_robots": true,
+      "disk_cache": { "dir": "/home/saka/.cache/saka", "ttl_seconds": 86400 }
     }
+  }
 
 searxng:
   image:
