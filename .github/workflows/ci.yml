@@ -23,7 +23,7 @@ jobs:
           cov=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
           echo "coverage: $cov%"
           [ "$(echo "$cov >= 40" | bc)" = 1 ] || { echo "coverage below 40%"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: coverage, path: coverage.out }
 
   lint:
