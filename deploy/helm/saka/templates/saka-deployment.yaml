@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saka
+  namespace: {{ include "saka.namespace" . }}
+  labels:
+    app.kubernetes.io/name: saka
+    app.kubernetes.io/part-of: saka
+spec:
+  replicas: {{ .Values.saka.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: saka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: saka
+        app.kubernetes.io/part-of: saka
+    spec:
+      containers:
+        - name: saka
+          image: "{{ .Values.saka.image.repository }}:{{ .Values.saka.image.tag }}"
+          imagePullPolicy: {{ .Values.saka.image.pullPolicy }}
+          args:
+            - serve
+            - --addr
+            - :8080
+            - --config
+            - /etc/saka/saka.json
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /etc/saka
+              readOnly: true
+            - name: cache
+              mountPath: /home/saka/.cache/saka
+          resources:
+            {{- toYaml .Values.saka.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: config
+          configMap:
+            name: saka-config
+        - name: cache
+          emptyDir: {}
