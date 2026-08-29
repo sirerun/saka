@@ -54,10 +54,10 @@ func TestChainBreakerOpens(t *testing.T) {
 	)
 	// burn the breaker: 3 failures
 	for i := 0; i < breakerThreshold; i++ {
-		c.Search(context.Background(), types.Query{Text: "q"})
+		_, _ = c.Search(context.Background(), types.Query{Text: "q"})
 	}
 	before := calls
-	c.Search(context.Background(), types.Query{Text: "q"})
+	_, _ = c.Search(context.Background(), types.Query{Text: "q"})
 	if calls != before {
 		t.Errorf("breaker open but flaky provider was called")
 	}
@@ -65,7 +65,7 @@ func TestChainBreakerOpens(t *testing.T) {
 	for _, e := range c.entries {
 		e.openUntil = time.Now().Add(-time.Second)
 	}
-	c.Search(context.Background(), types.Query{Text: "q"})
+	_, _ = c.Search(context.Background(), types.Query{Text: "q"})
 	if calls == before {
 		t.Error("breaker never reopened")
 	}
