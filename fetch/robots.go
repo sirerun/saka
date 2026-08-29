@@ -75,7 +75,7 @@ func (rc *robotsCache) fetchRules(ctx context.Context, client *http.Client, robo
 	if err != nil || resp == nil {
 		return hr // no robots.txt -> allowed
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return hr // no robots.txt -> allowed
 	}
@@ -94,7 +94,7 @@ func (rc *robotsCache) fetchRules(ctx context.Context, client *http.Client, robo
 			ua := strings.TrimSpace(strings.TrimPrefix(line, "user-agent:"))
 			if inGroup && groupApplies {
 				// new group starts; reset
-				inGroup, groupApplies = false, false
+				groupApplies = false
 			}
 			inGroup = true
 			groupApplies = groupApplies || ua == "*" || strings.Contains(agent, ua)

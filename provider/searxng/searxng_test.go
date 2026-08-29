@@ -15,7 +15,7 @@ func TestSearchOK(t *testing.T) {
 			t.Errorf("format=%q", r.URL.Query().Get("format"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"results":[{"title":"T","url":"https://x","content":"snip"}]}`))
+		_, _ = w.Write([]byte(`{"results":[{"title":"T","url":"https://x","content":"snip"}]}`))
 	}))
 	defer srv.Close()
 
@@ -48,7 +48,7 @@ func TestSearchSiteFilter(t *testing.T) {
 	var gotQ string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQ = r.URL.Query().Get("q")
-		w.Write([]byte(`{"results":[]}`))
+		_, _ = w.Write([]byte(`{"results":[]}`))
 	}))
 	defer srv.Close()
 

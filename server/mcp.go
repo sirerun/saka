@@ -84,7 +84,7 @@ func (s *MCPServer) Serve(ctx context.Context, in io.Reader, out io.Writer) erro
 
 func (s *MCPServer) write(out io.Writer, resp rpcResponse) {
 	b, _ := json.Marshal(resp)
-	fmt.Fprintf(out, "%s\n", b)
+	_, _ = fmt.Fprintf(out, "%s\n", b)
 }
 
 type mcpTool struct {
