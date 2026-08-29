@@ -96,7 +96,7 @@ func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (*types.Page, error)
 	if err != nil {
 		return nil, fmt.Errorf("fetch: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("fetch: status %d for %s", resp.StatusCode, rawURL)
 	}
@@ -148,7 +148,7 @@ func (f *Fetcher) FetchStream(ctx context.Context, rawURL string) (<-chan types.
 			errc2 <- err
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != http.StatusOK {
 			errc2 <- fmt.Errorf("fetch: status %d", resp.StatusCode)
 			return
