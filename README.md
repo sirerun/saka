@@ -13,7 +13,7 @@ in-memory only; no Stripe).
 ## Install
 
 ```sh
-curl -sL https://getsaka.dev | sh   # see NOTES.md — reconstructed, verify before use
+curl -fsSL https://raw.githubusercontent.com/sirerun/saka/main/install.sh | sh
 # or
 brew install sirerun/tap/saka
 # or
