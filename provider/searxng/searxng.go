@@ -26,6 +26,19 @@ func New(baseURL string) *Provider {
 
 func (p *Provider) Name() string { return "searxng" }
 
+func init() {
+	if err := types.Register("searxng", newFromConfig); err != nil {
+		panic(err)
+	}
+}
+
+func newFromConfig(cfg types.ProviderConfig) (types.Provider, error) {
+	if cfg.URL == "" {
+		return nil, fmt.Errorf("saka: searxng provider requires url")
+	}
+	return New(cfg.URL), nil
+}
+
 // searxResponse models the subset of SearXNG's JSON we need.
 type searxResponse struct {
 	Results []struct {
