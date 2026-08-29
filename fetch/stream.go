@@ -25,9 +25,12 @@ func ExtractStream(rawURL string, body io.Reader) (chunks <-chan types.Chunk, do
 	errCh := make(chan error, 1)
 
 	go func() {
+		// Only ch is ranged over by consumers; doneCh/errCh each receive
+		// exactly one value before return and are read at most once via
+		// select, so they must stay unclosed — closing an unwritten
+		// buffered channel makes it spuriously receive-ready with the
+		// zero value, racing the real send in the consumer's select.
 		defer close(ch)
-		defer close(doneCh)
-		defer close(errCh)
 
 		doc, err := html.Parse(body)
 		if err != nil {
