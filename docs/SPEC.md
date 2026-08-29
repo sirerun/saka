@@ -113,8 +113,10 @@ which triggers immediate chain fallback (no retry on same provider).
 | `searxng` | GET `<url>/search?format=json` | Self-hosted. Requires `formats: [html, json]` in instance settings. Recommended for volume. |
 | `startpage` | GET `www.startpage.com/sp/search` | Last in chain. RPS ≤ 0.2. Empty parse = challenge → `RateLimitError`. |
 
-Adding a provider = implement `Provider`, register in `saka.New` and
-`Config.Validate`.
+Adding a provider = implement `Provider`, then call `types.Register(name,
+factory)` from an `init()` in the provider's own package. `Config.Validate`
+and engine construction resolve providers via `types.Lookup`/
+`types.Registered` against this registry.
 
 ### 3.4 Chain behavior
 
