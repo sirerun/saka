@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -13,17 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirerun/saka/internal/htmd"
 	types "github.com/sirerun/saka/types"
 	"golang.org/x/net/html"
 )
 
 const endpoint = "https://www.startpage.com/sp/search"
-
-var userAgents = []string{
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-	"Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-}
 
 type Provider struct {
 	client *http.Client
@@ -56,7 +50,7 @@ func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, e
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", userAgents[rand.Intn(len(userAgents))])
+	htmd.SetUserAgent(req)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
@@ -97,21 +91,20 @@ func langOrDefault(r string) string {
 // parseResults: results live in section.w-gl > a.w-gl__result-title (href is
 // a direct URL) with snippet in p.w-gl__description. One walk collects both.
 func parseResults(r io.Reader, max int) ([]types.Result, error) {
-	doc, err := html.Parse(r)
+	doc, err := htmd.Parse(r)
 	if err != nil {
 		return nil, err
 	}
 	var results []types.Result
 
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	htmd.Walk(doc, func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
-			cls := classOf(n)
+			cls := htmd.Class(n)
 			if strings.Contains(cls, "w-gl__result-title") && len(results) < max {
-				href := attrOf(n, "href")
+				href := htmd.Attr(n, "href")
 				if strings.HasPrefix(href, "http") {
 					results = append(results, types.Result{
-						Title:  textOf(n),
+						Title:  htmd.Text(n),
 						URL:    href,
 						Source: "startpage",
 					})
@@ -119,49 +112,17 @@ func parseResults(r io.Reader, max int) ([]types.Result, error) {
 			}
 		}
 		if n.Type == html.ElementNode && n.Data == "p" &&
-			strings.Contains(classOf(n), "w-gl__description") &&
+			strings.Contains(htmd.Class(n), "w-gl__description") &&
 			len(results) > 0 {
 			last := &results[len(results)-1]
 			if last.Snippet == "" {
-				last.Snippet = textOf(n)
+				last.Snippet = htmd.Text(n)
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+	})
 
 	for i := range results {
 		results[i].Position = i + 1
 	}
 	return results, nil
-}
-
-// attrOf/classOf/textOf are shared helpers — extract to an internal
-// package (saka/internal/htmd) so duckduckgo and startpage both use them.
-func attrOf(n *html.Node, key string) string {
-	for _, a := range n.Attr {
-		if a.Key == key {
-			return a.Val
-		}
-	}
-	return ""
-}
-
-func classOf(n *html.Node) string { return attrOf(n, "class") }
-
-func textOf(n *html.Node) string {
-	var sb strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			sb.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(n)
-	return strings.TrimSpace(sb.String())
 }
