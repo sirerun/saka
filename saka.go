@@ -19,19 +19,26 @@ import (
 
 // Re-export leaf types so library callers keep using saka.Query, etc.
 type (
-	Query          = types.Query
-	Result         = types.Result
-	Results        = types.Results
-	Chunk          = types.Chunk
-	Page           = types.Page
-	Searcher       = types.Searcher
-	Provider       = types.Provider
-	ProviderConfig = types.ProviderConfig
-	RateLimitError = types.RateLimitError
+	Query           = types.Query
+	Result          = types.Result
+	Results         = types.Results
+	Chunk           = types.Chunk
+	Page            = types.Page
+	Searcher        = types.Searcher
+	Provider        = types.Provider
+	ProviderConfig  = types.ProviderConfig
+	RateLimitError  = types.RateLimitError
+	ProviderFactory = types.ProviderFactory
 )
 
 // ErrNoResults is returned when all providers fail or return nothing.
 var ErrNoResults = types.ErrNoResults
+
+// Register is a convenience wrapper over types.Register for third-party
+// provider packages, so they depend on saka's public API, not types.
+func Register(name string, factory ProviderFactory) error {
+	return types.Register(name, factory)
+}
 
 // DiskCacheConfig enables an optional on-disk L2 cache for fetched pages.
 type DiskCacheConfig struct {
