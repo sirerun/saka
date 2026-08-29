@@ -106,6 +106,41 @@ func TestFetchUsesDiskCache(t *testing.T) {
 	}
 }
 
+func TestFetchTimeout(t *testing.T) {
+	block := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-block // hang past the caller's deadline
+	}))
+	defer srv.Close()
+	defer close(block) // unblock the handler before srv.Close() waits on it
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	f := New(0, time.Minute, false)
+	if _, err := f.Fetch(ctx, srv.URL); err == nil {
+		t.Error("expected error for a request past its context deadline")
+	}
+}
+
+func TestFetchBodyCapEnforced(t *testing.T) {
+	padding := strings.Repeat("a", 6<<20) // past fetch.go's 5<<20 (5MB) cap
+	body := "<html><body><article><p>" + padding + "MARKER_BEYOND_CAP</p></article></body></html>"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	f := New(0, time.Minute, false)
+	page, err := f.Fetch(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatalf("expected the body cap to truncate rather than error, got: %v", err)
+	}
+	if strings.Contains(page.Text, "MARKER_BEYOND_CAP") {
+		t.Error("body past the 5<<20 cap was not truncated -- marker placed beyond the cap leaked into extracted text")
+	}
+}
+
 func TestFetchStreamSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(fetchArticleHTML))
@@ -170,6 +205,53 @@ func TestFetchStreamNonOKStatus(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for stream error")
+	}
+}
+
+func TestFetchStreamTimeout(t *testing.T) {
+	block := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-block // hang past the caller's deadline
+	}))
+	defer srv.Close()
+	defer close(block) // unblock the handler before srv.Close() waits on it
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	f := New(0, time.Minute, false)
+	chunks, _, errc := f.FetchStream(ctx, srv.URL)
+	for range chunks {
+	}
+	select {
+	case err := <-errc:
+		if err == nil {
+			t.Error("expected error for a request past its context deadline")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for stream error")
+	}
+}
+
+func TestFetchStreamBodyCapEnforced(t *testing.T) {
+	padding := strings.Repeat("a", 6<<20) // past fetch.go's 5<<20 (5MB) cap
+	body := "<html><body><article><p>" + padding + "MARKER_BEYOND_CAP</p></article></body></html>"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	f := New(0, time.Minute, false)
+	chunks, done, errc := f.FetchStream(context.Background(), srv.URL)
+	for range chunks {
+	}
+	select {
+	case page := <-done:
+		if strings.Contains(page.Text, "MARKER_BEYOND_CAP") {
+			t.Error("body past the 5<<20 cap was not truncated -- marker placed beyond the cap leaked into extracted text")
+		}
+	case err := <-errc:
+		t.Fatalf("expected the body cap to truncate rather than error, got: %v", err)
 	}
 }
 
