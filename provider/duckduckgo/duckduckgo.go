@@ -25,6 +25,16 @@ func New() *Provider {
 	return &Provider{client: &http.Client{Timeout: 15 * time.Second}}
 }
 
+func init() {
+	if err := types.Register("duckduckgo", newFromConfig); err != nil {
+		panic(err)
+	}
+}
+
+func newFromConfig(_ types.ProviderConfig) (types.Provider, error) {
+	return New(), nil
+}
+
 func (p *Provider) Name() string { return "duckduckgo" }
 
 func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, error) {

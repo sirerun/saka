@@ -32,6 +32,16 @@ func New() *Provider {
 
 func (p *Provider) Name() string { return "startpage" }
 
+func init() {
+	if err := types.Register("startpage", newFromConfig); err != nil {
+		panic(err)
+	}
+}
+
+func newFromConfig(_ types.ProviderConfig) (types.Provider, error) {
+	return New(), nil
+}
+
 func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, error) {
 	params := url.Values{
 		"query":    {q.Text},
