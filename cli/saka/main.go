@@ -64,7 +64,7 @@ func doSearch(args []string) {
 	n := fs.Int("n", 10, "max results")
 	format := fs.String("format", "table", "table|json|markdown")
 	site := fs.String("site", "", "restrict to site")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 	if fs.NArg() < 1 {
 		fatal(fmt.Errorf("usage: saka search [flags] \"query\""))
 	}
@@ -83,7 +83,7 @@ func doSearch(args []string) {
 	case "json":
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(res)
+		_ = enc.Encode(res)
 	case "markdown":
 		fmt.Printf("# Results for %q _(via %s)_\n\n", res.Query, res.Provider)
 		for _, r := range res.Results {
@@ -100,7 +100,7 @@ func doFetch(args []string) {
 	fs := flag.NewFlagSet("fetch", flag.ExitOnError)
 	cfgPath := fs.String("config", "", "path to saka.json")
 	format := fs.String("format", "text", "text|json|markdown")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 	if fs.NArg() != 1 {
 		fatal(fmt.Errorf("usage: saka fetch [flags] <url>"))
 	}
@@ -115,7 +115,7 @@ func doFetch(args []string) {
 	case "json":
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(page)
+		_ = enc.Encode(page)
 	case "markdown":
 		fmt.Printf("# %s\n\n_Source: %s_\n\n%s\n", page.Title, page.URL, page.Text)
 	default:
@@ -130,7 +130,7 @@ func doServe(args []string) {
 	addr := fs.String("addr", ":8080", "HTTP listen address")
 	keysPath := fs.String("keys", "", "path to ed25519 public key (enables signed-key auth)")
 	adminKey := fs.String("admin-key", "", "admin Bearer token for full /v1/usage dump")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 
 	e := loadEngine(*cfgPath)
 	ctx := context.Background()

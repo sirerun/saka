@@ -7,9 +7,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "1.22" }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version: "1.27" }
       - name: Vet
         run: go vet ./...
       - name: Test (race + cover)
@@ -23,24 +23,24 @@ jobs:
           cov=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
           echo "coverage: $cov%"
           [ "$(echo "$cov >= 40" | bc)" = 1 ] || { echo "coverage below 40%"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: coverage, path: coverage.out }
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "1.22" }
-      - uses: golangci/golangci-lint-action@v6
-        with: { version: latest }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version: "1.27" }
+      - uses: golangci/golangci-lint-action@v9
+        with: { version: v2.13.2 }
 
   # Runs on GitHub-hosted runners (Docker + kind available there).
   # Do not require Docker/kind on developer laptops.
   k8s-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Create kind cluster
         uses: helm/kind-action@v1.12.0
         with:

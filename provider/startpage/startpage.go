@@ -27,7 +27,6 @@ var userAgents = []string{
 
 type Provider struct {
 	client *http.Client
-	jar    http.CookieJar // hold consent cookies across requests
 }
 
 func New() *Provider {
@@ -65,7 +64,7 @@ func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, e
 	if err != nil {
 		return nil, fmt.Errorf("startpage: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusTooManyRequests, http.StatusForbidden:
