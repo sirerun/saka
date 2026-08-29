@@ -32,6 +32,7 @@ brews:
       owner: sirerun
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
     homepage: https://github.com/sirerun/saka
     description: Free web search — no API keys, embeddable, MCP-ready
     license: Apache-2.0
