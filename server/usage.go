@@ -88,13 +88,13 @@ func (u *UsageStats) Handler(adminKey string) http.HandlerFunc {
 		defer u.mu.Unlock()
 
 		if key == adminKey && adminKey != "" {
-			json.NewEncoder(w).Encode(u.byKey) // full dump for billing jobs
+			_ = json.NewEncoder(w).Encode(u.byKey) // full dump for billing jobs
 			return
 		}
 		if ku, ok := u.byKey[key]; ok {
-			json.NewEncoder(w).Encode(ku)
+			_ = json.NewEncoder(w).Encode(ku)
 			return
 		}
-		json.NewEncoder(w).Encode(KeyUsage{Day: time.Now().Format("2006-01-02")})
+		_ = json.NewEncoder(w).Encode(KeyUsage{Day: time.Now().Format("2006-01-02")})
 	}
 }
