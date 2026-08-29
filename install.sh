@@ -1,5 +1,5 @@
 #!/bin/sh
-# saka installer — curl -sL https://getsaka.dev/install.sh | sh
+# saka installer — curl -fsSL https://raw.githubusercontent.com/sirerun/saka/main/install.sh | sh
 #
 # NOTE: the source chat's own rendering of this script was corrupted —
 # it displayed nested, duplicated `$(...)`/`${...}` substitutions (e.g.
