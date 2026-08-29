@@ -39,13 +39,19 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestValidateUnregisteredProviderErrorText(t *testing.T) {
+func TestRegistryUnknownProviderThroughValidate(t *testing.T) {
 	cfg := Config{Providers: []ProviderConfig{{Name: "google"}}}
 	err := cfg.Validate()
-	if err == nil {
-		t.Fatal("expected error for unregistered provider")
-	}
-	if !strings.Contains(err.Error(), "not registered") {
-		t.Errorf("error should name the provider as unregistered, got: %v", err)
-	}
+
+	t.Run("returns error", func(t *testing.T) {
+		if err == nil {
+			t.Fatal("expected error for unregistered provider")
+		}
+	})
+
+	t.Run("error names provider as not registered", func(t *testing.T) {
+		if err == nil || !strings.Contains(err.Error(), `"google"`) || !strings.Contains(err.Error(), "not registered") {
+			t.Errorf("error should name the provider as unregistered, got: %v", err)
+		}
+	})
 }
