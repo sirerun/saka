@@ -5,23 +5,17 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/sirerun/saka/internal/htmd"
 	"github.com/sirerun/saka/types"
 	"golang.org/x/net/html"
 )
 
 const htmlEndpoint = "https://html.duckduckgo.com/html/"
-
-var userAgents = []string{
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-	"Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-}
 
 type Provider struct {
 	client *http.Client
@@ -48,7 +42,7 @@ func (p *Provider) Search(ctx context.Context, q types.Query) ([]types.Result, e
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", userAgents[rand.Intn(len(userAgents))])
+	htmd.SetUserAgent(req)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -76,28 +70,23 @@ func regionOrDefault(r string) string {
 // parseResults walks the DOM looking for result links: a.result__a
 // inside div.result, with snippet in a.result__snippet.
 func parseResults(r io.Reader, max int) ([]types.Result, error) {
-	doc, err := html.Parse(r)
+	doc, err := htmd.Parse(r)
 	if err != nil {
 		return nil, err
 	}
 	var results []types.Result
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" && hasClass(n, "result__a") {
-			href := attr(n, "href")
+	htmd.Walk(doc, func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" && htmd.HasClass(n, "result__a") {
+			href := htmd.Attr(n, "href")
 			target := unwrapDDG(href)
 			if target != "" && len(results) < max {
 				results = append(results, types.Result{
-					Title: text(n),
+					Title: htmd.Text(n),
 					URL:   target,
 				})
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+	})
 
 	// attach snippets: they appear after each title link in document order.
 	var withSnips []types.Result
@@ -115,16 +104,11 @@ func parseResults(r io.Reader, max int) ([]types.Result, error) {
 
 func collectSnippets(doc *html.Node) []string {
 	var snips []string
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" && hasClass(n, "result__snippet") {
-			snips = append(snips, text(n))
+	htmd.Walk(doc, func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" && htmd.HasClass(n, "result__snippet") {
+			snips = append(snips, htmd.Text(n))
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+	})
 	return snips
 }
 
@@ -148,39 +132,6 @@ func unwrapDDG(href string) string {
 		return href
 	}
 	return ""
-}
-
-func attr(n *html.Node, key string) string {
-	for _, a := range n.Attr {
-		if a.Key == key {
-			return a.Val
-		}
-	}
-	return ""
-}
-
-func hasClass(n *html.Node, class string) bool {
-	for _, c := range strings.Fields(attr(n, "class")) {
-		if c == class {
-			return true
-		}
-	}
-	return false
-}
-
-func text(n *html.Node) string {
-	var sb strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			sb.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(n)
-	return strings.TrimSpace(sb.String())
 }
 
 // NOTE (source-chat comment, preserved): the assistant flagged that the
