@@ -4,16 +4,62 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestSplitChunks(t *testing.T) {
-	text := strings.Repeat("a", 2000)
-	parts := splitChunks(text, 900)
-	if len(parts) != 3 {
-		t.Fatalf("want 3 chunks, got %d", len(parts))
+	tests := []struct {
+		name       string
+		text       string
+		size       int
+		wantChunks []int // want rune count per chunk
+	}{
+		{
+			name:       "empty text",
+			text:       "",
+			size:       900,
+			wantChunks: nil,
+		},
+		{
+			name:       "exact size boundary, no trailing empty chunk",
+			text:       strings.Repeat("a", 1800),
+			size:       900,
+			wantChunks: []int{900, 900},
+		},
+		{
+			name:       "trailing partial chunk",
+			text:       strings.Repeat("a", 2000),
+			size:       900,
+			wantChunks: []int{900, 900, 200},
+		},
+		{
+			name:       "multi-byte runes split on rune boundaries, not byte boundaries",
+			text:       strings.Repeat("€", 950), // 3 bytes/rune; a byte-based split would corrupt a rune here
+			size:       900,
+			wantChunks: []int{900, 50},
+		},
 	}
-	if len(parts[0]) != 900 || len(parts[2]) != 200 {
-		t.Errorf("chunk sizes wrong: %d %d %d", len(parts[0]), len(parts[1]), len(parts[2]))
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parts := splitChunks(tt.text, tt.size)
+			if len(parts) != len(tt.wantChunks) {
+				t.Fatalf("want %d chunks, got %d: %v", len(tt.wantChunks), len(parts), parts)
+			}
+			var reassembled strings.Builder
+			for i, part := range parts {
+				if !utf8.ValidString(part) {
+					t.Errorf("chunk %d is not valid UTF-8 (rune split mid-character): %q", i, part)
+				}
+				if n := utf8.RuneCountInString(part); n != tt.wantChunks[i] {
+					t.Errorf("chunk %d: want %d runes, got %d", i, tt.wantChunks[i], n)
+				}
+				reassembled.WriteString(part)
+			}
+			if got := reassembled.String(); got != tt.text {
+				t.Errorf("reassembled chunks do not equal original text: got %q, want %q", got, tt.text)
+			}
+		})
 	}
 }
 
