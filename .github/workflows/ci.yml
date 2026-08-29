@@ -84,6 +84,7 @@ jobs:
             --namespace saka --create-namespace \
             --set image.repository=saka \
             --set image.tag=ci
+          kubectl -n saka wait --for=condition=available deploy/searxng --timeout=180s
           kubectl -n saka wait --for=condition=available deploy/saka --timeout=180s
           kubectl -n saka port-forward svc/saka 8080:8080 &
           PF_PID=$!
