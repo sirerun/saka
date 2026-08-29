@@ -21,7 +21,7 @@ func doKeys(args []string) {
 	privPath := fs.String("priv", "saka_ed25519.key", "private key file (created on first run)")
 	expDays := fs.Int("exp-days", 365, "days until expiry (0 = never)")
 	count := fs.Int("n", 1, "number of keys to generate")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 
 	priv := loadOrCreatePriv(*privPath)
 

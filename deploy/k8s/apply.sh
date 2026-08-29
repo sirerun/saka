@@ -4,7 +4,7 @@
 # (kind load docker-image saka:local / mirror / pull secret).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 IMAGE="${SAKA_IMAGE:-saka:local}"
 
 cd "$ROOT"
