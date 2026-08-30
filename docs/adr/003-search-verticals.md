@@ -85,3 +85,30 @@ misspells or forgets a vertical's config gets a runtime error at
 `Search()` time, not a config-validation-time error -- `Config.Validate()`
 could be extended to catch an unconfigured `Vertical` up front, which is
 worth doing as part of E7's implementation rather than deferred silently.
+
+## Addendum 2026-08-29: E8 (images) reuses this mechanism, extends Result
+
+E8's images vertical confirms the "verticals compose" prediction above:
+it needs no `chain.Chain` or registry change, only a new provider and a
+`Vertical: "images"` config value. Founder decision (2026-08-29): source
+is SearXNG's existing `categories=images` query mode (the self-hosted
+SearXNG instance this repo already integrates for general web search),
+not a separate image-search API -- consistent with saka's "no API keys"
+posture. The provider lives in `provider/searxng` (shares the package's
+HTTP client and base-URL config) but registers under a distinct name,
+`"searxng-images"`, not `"searxng"` -- a config entry's provider `Name`
+should unambiguously say what it does; overloading one registered name
+for two verticals would make `saka.json` harder to read and would not
+save any real code (the images provider still needs its own `Search`
+method to parse SearXNG's image-result JSON shape, which differs from
+its general-web shape).
+
+`types.Result` gains three optional fields for this: `ThumbnailURL`,
+`Width`, `Height` (all `omitempty` in JSON, zero value when a provider
+doesn't set them -- general web providers are unaffected and need no
+changes). SearXNG's `categories=images` response includes `img_src`
+(the full-size image URL -- mapped to `Result.URL`, keeping "URL of the
+thing found" consistent across verticals), `thumbnail_src` (mapped to
+the new `ThumbnailURL`), and `resolution` (a string like `"1920x1080"`
+that the provider parses into `Width`/`Height`; a malformed or absent
+resolution leaves both at zero rather than failing the whole result).
