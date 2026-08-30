@@ -123,7 +123,7 @@ Constraints).
 | D5 | Helm chart at deploy/helm/saka | this session | **SHIPPED** 2026-08-29 -- helm-smoke CI job green |
 | D7 | E7 expanded to executable fidelity | this session | **SHIPPED** 2026-08-29 -- see docs/plans/E7-news-vertical.md |
 | D8 | E8 expanded to executable fidelity | this session | **SHIPPED** 2026-08-30 -- see docs/plans/E8-images-vertical.md |
-| D9 | E9 expanded to executable fidelity | pool | `T9.0` `[x]` |
+| D9 | E9 expanded to executable fidelity | this session | **SHIPPED** 2026-08-30 -- see docs/plans/E9-streaming-search.md |
 | D6 | E6 expanded to executable fidelity | -- | Parked; not triggered (needs a founder decision on a store/Stripe backend) |
 
 ## 4. Checkable Work Breakdown
@@ -144,7 +144,7 @@ Counts are `(done/total)`, regenerated on every `/plan`/`/tidy` run.
 
 ### E7 -- News Vertical  -> docs/plans/E7-news-vertical.md  (0/6)  fidelity: executable
 ### E8 -- Images Vertical  -> docs/plans/E8-images-vertical.md  (0/5)  fidelity: executable
-### E9 -- Streaming Search Results  -> docs/plans/E9-streaming-search.md  (0/1)  fidelity: outline  (triggered; T9.0 not yet run)
+### E9 -- Streaming Search Results  -> docs/plans/E9-streaming-search.md  (0/5)  fidelity: executable
 
 **Parked (not triggered; needs a founder decision before its planning task can run):**
 
@@ -176,7 +176,7 @@ what was found, what was fixed).
 ### Wave 6: Future planning
 - [x] T7.0 PLAN: expand E7 -- done this run, see docs/plans/E7-news-vertical.md
 - [x] T8.0 PLAN: expand E8 -- done this run, see docs/plans/E8-images-vertical.md
-- [ ] T9.0 PLAN: expand E9 -- triggered (David greenlit 2026-08-29), not yet run
+- [x] T9.0 PLAN: expand E9 -- done this run, see docs/plans/E9-streaming-search.md
 - [ ] T6.0 PLAN: expand E6 -- parked, not triggered (needs a founder decision on a store/Stripe backend)
 
 ### Wave 7: E7 execution (6 tasks, claimable now via /apply --pool)
@@ -193,6 +193,13 @@ what was found, what was fixed).
 - [ ] T8.3 REST + CLI proof (deps: T7.4, T8.2)
 - [ ] T8.4 MCP + tool-schema proof (deps: T7.5, T8.2)
 - [ ] T8.5 Docs (deps: T8.3, T8.4)
+
+### Wave 9: E9 execution (5 tasks, claimable now / as T7.2 lands)
+- [ ] T9.1 types.Searcher.SearchStream + Engine implementation
+- [ ] T9.2 REST GET /v1/search/stream (deps: T9.1)
+- [ ] T9.3 CLI --stream flag (deps: T9.1)
+- [ ] T9.4 Vertical + streaming composition proof (deps: T9.1, T7.2)
+- [ ] T9.5 Docs (deps: T9.2, T9.3)
 
 ## 6. Timeline and Milestones
 
@@ -239,6 +246,23 @@ Definition of done (all apply unless a task states a stated exception):
 
 ## 9. Progress Log
 
+**2026-08-30 -- Change Summary (T9.0):** Ran T9.0: expanded E9 (Streaming
+Search Results) to executable fidelity (5 tasks, T9.1-T9.5) per David's
+decision to stream only once a provider succeeds, not partial-per-
+provider. Wrote docs/adr/004-search-streaming.md: `types.Searcher` gains
+`SearchStream`, mirroring the existing `Fetch`/`FetchStream` channel-
+shape precedent (one item channel, one done channel, one error channel);
+`chain.Chain`'s fallback logic is unchanged and untouched -- `Engine.
+SearchStream` calls the existing synchronous `Search` internally, then
+streams its results. This IS a new ADR (not an ADR 003 addendum) because
+it's a distinct decision -- adding a method to the Searcher interface,
+which ADR 003 had called "fixed" as its own rejected-alternative
+reasoning; ADR 004 explains why this addition doesn't reopen that
+concern (one vertical-agnostic method, not one per vertical). MCP
+streaming is explicitly out of scope (stdio JSON-RPC transport is
+request/response). T9.4 proves streaming composes with E7/E8's vertical
+mechanism without silent conflicts.
+
 **2026-08-30 -- Change Summary (T8.0):** Ran T8.0: expanded E8 (Images
 Vertical) to executable fidelity (5 tasks, T8.1-T8.5) per David's source
 decision (SearXNG's `categories=images` mode, plus extending
@@ -272,31 +296,33 @@ this plan's epics under Planned.
 
 ## 10. Hand-off Notes
 
-- E1-E5 are done. `/apply --pool` on this plan now has E7's 6 tasks and
-  E8's 5 tasks as claimable work (T7.1 and T8.1 first; E8's tasks each
-  `deps:` on their matching T7.x, so the pool naturally sequences E8
-  behind E7 without a manual wave gate -- see docs/plans/E7-news-vertical.md
-  and docs/plans/E8-images-vertical.md for the full dependency graphs).
+- E1-E5 are done. `/apply --pool` on this plan now has E7's 6, E8's 5,
+  and E9's 5 tasks as claimable work (T7.1 and T9.1 have no deps and are
+  claimable now; E8's tasks and T9.4 each `deps:` on their matching T7.x,
+  so the pool naturally sequences them without a manual wave gate -- see
+  docs/plans/E7-news-vertical.md, docs/plans/E8-images-vertical.md, and
+  docs/plans/E9-streaming-search.md for the full dependency graphs).
 - `kazi` is on PATH; every task's `acc:` line is what `/apply`'s kazi
   execution lane will derive a predicate from at dispatch time (never at
   plan time -- see apply/KAZI-EXEC.md).
 - T4.2/T4.4 (`kind: human`/founder-decision items) are done -- T4.2
   turned out to need no action (the shared homebrew-tap repo already
   existed); T4.4 cut the real v0.1.0 release.
-- E9 is triggered (David greenlit it 2026-08-29) but not yet expanded --
-  run T9.0 (via `/plan` scoped to E9, same as T7.0/T8.0 were run) before
-  it has claimable engineering tasks. E6 stays parked; do not run T6.0
-  without a fresh founder decision on a store/Stripe backend.
+- All three founder-greenlit epics (E7/E8/E9) are now at `fidelity:
+  executable`. E6 stays parked; do not run T6.0 without a fresh founder
+  decision on a store/Stripe backend.
 - E7's design (docs/adr/003-search-verticals.md, plus its 2026-08-30
   addendum) generalizes past news: E8 (images) reused the exact same
   `Query.Vertical` + per-vertical-chain mechanism with a new
   `provider/searxng` sibling (`"searxng-images"`) and `Vertical: "images"`,
   no new mechanism -- and its own extension (`types.Result`'s
   ThumbnailURL/Width/Height fields) is recorded in that same ADR's
-  addendum rather than a new ADR. E9 (streaming) should be checked
-  against the same ADR before planning: it likely does NOT need a new
-  vertical (streaming is orthogonal to which vertical is queried), so
-  read ADR 003 to confirm before assuming it applies.
+  addendum rather than a new ADR. E9 (streaming) needed its own new ADR
+  (docs/adr/004-search-streaming.md) instead: it adds `SearchStream` to
+  `types.Searcher`, a distinct decision from the vertical mechanism (ADR
+  003 called `Searcher` "fixed" as its own rejected-alternative
+  reasoning; ADR 004 explains why this addition is vertical-agnostic and
+  doesn't reopen that concern).
 - No secrets in this repo's plan; Stripe credentials (if/when E6
   triggers) belong in the operator's own secret store, never in `docs/`.
 
@@ -312,4 +338,4 @@ this plan's epics under Planned.
 - `.claude/scratch/usecases-manifest.json` -- full use case manifest
   backing section 2's counts.
 - `docs/adr/001-provider-plugin-registry.md`, `docs/adr/002-coverage-gate-honesty.md`,
-  `docs/adr/003-search-verticals.md`.
+  `docs/adr/003-search-verticals.md`, `docs/adr/004-search-streaming.md`.

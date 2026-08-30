@@ -1,10 +1,18 @@
 # E9 -- Streaming Search Results
 
 Acceptance: callers can receive search results incrementally over SSE instead of waiting for the full provider response.
-fidelity: outline
+fidelity: executable
 
-Intent: docs/SPEC.md section 14 lists "Page.Chunks over SSE search" as Future work. Needs a UX/protocol decision: stream partial results per-provider as the chain falls through, or only stream once a provider succeeds (mirroring /v1/stream's fetch-extraction pattern) -- deferred past the frontier since it interacts with chain.Chain's fallback semantics in a way that needs explicit design.
+Decision rationale: docs/adr/004-search-streaming.md. Founder decision
+(2026-08-30): stream only once a provider succeeds -- no partial results
+while `chain.Chain` is still falling through candidate providers.
+`types.Searcher` gains `SearchStream`, mirroring the existing
+`Fetch`/`FetchStream` channel-shape precedent; `chain.Chain` and the
+provider registry are unchanged. MCP is explicitly out of scope this pass
+(this repo's MCP transport is request/response, not SSE).
 
-Exit criteria: T9.0 expands this file to executable fidelity with >=5 tasks, each carrying acceptance criteria and dependencies.
-
-- [ ] T9.0 PLAN: expand E9 to executable fidelity (informed by frontier learnings)  Owner: pool  Est: 1h  kind: plan  delivers: [plans/E9.md at fidelity: executable]  deps: [T1.5, T2.4, T3.6, T4.4, T5.4]  acc: [parse_plan.py sees E9 with >= 5 tasks, every task carries acceptance criteria, deps resolve, fidelity flipped to executable]
+- [ ] T9.1 Add `SearchStream(ctx context.Context, q Query) (<-chan Result, <-chan *Results, <-chan error)` to `types.Searcher` (types/types.go) and implement it on `*saka.Engine` (saka.go) -- calls the existing, unmodified `e.Search(ctx, q)` synchronously, then streams the returned `Results.Results` slice over the item channel one at a time, closes it, and sends the final `*Results` (Provider/TookMs/Query) on the done channel. No `chain.Chain` changes  Owner: TBD  Est: 1h  verifies: [UC-023]  acc: [types.Searcher has a SearchStream method with the documented signature, *saka.Engine implements it, and go test . -race -cover passes a new test asserting every Result from a fixed Query arrives over the item channel before the done channel fires with a non-nil *Results matching what Engine.Search returns for the same Query]
+- [ ] T9.2 Wire SearchStream into the REST API: new `GET /v1/search/stream` endpoint (server/http.go) mirroring handleStream's SSE conventions -- `event: result` per Result (JSON-encoded), a single `event: done` carrying the final Results summary, `event: error` on failure -- accepting the same query params as `GET /v1/search` (q, vertical, etc.)  Owner: TBD  Est: 1h  verifies: [UC-023]  deps: [T9.1]  acc: [an httptest-based API test hits GET /v1/search/stream?q=... and asserts it receives one or more "event: result" SSE frames followed by exactly one "event: done" frame, matching the existing /v1/stream test pattern in server/http_test.go]
+- [ ] T9.3 Wire SearchStream into the CLI: `saka search --stream` flag (cli/saka) prints each result as it arrives via SearchStream instead of waiting for Engine.Search's full batch  Owner: TBD  Est: 45m  verifies: [UC-023]  deps: [T9.1]  acc: [a CLI test asserts --stream drains and prints results incrementally from the SearchStream item channel rather than blocking on a single batched Engine.Search call, and --stream is documented in `saka search --help`]
+- [ ] T9.4 Prove SearchStream composes with the vertical mechanism (docs/adr/003-search-verticals.md): a caller passing `Query{Vertical: "news", ...}` to SearchStream streams results from the news chain, not the general chain -- proves E7/E8/E9 don't silently conflict  Owner: TBD  Est: 30m  verifies: [UC-023]  deps: [T9.1, T7.2]  acc: [a test configuring the gdelt provider under vertical "news" asserts SearchStream(ctx, Query{Vertical: "news", ...})'s done-channel *Results.Provider is "gdelt"]
+- [ ] T9.5 Document streaming search: docs/SPEC.md gains a subsection on `GET /v1/search/stream` (mirroring the existing `/v1/stream` subsection) and the `--stream` CLI flag; explicitly states MCP does NOT get a streaming tool variant in this pass and why (stdio JSON-RPC is request/response, not SSE)  Owner: TBD  Est: 30m  verifies: [UC-023]  deps: [T9.2, T9.3]  acc: [docs/SPEC.md mentions "/v1/search/stream" and "--stream", and contains an explicit MCP-out-of-scope note for this epic]
