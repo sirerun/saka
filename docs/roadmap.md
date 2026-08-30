@@ -152,7 +152,7 @@ entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
 E7 without a manual wave gate.
 
-**E7 -- News Vertical -- IN PROGRESS (T7.1/6).**
+**E7 -- News Vertical -- IN PROGRESS (T7.1, T7.3/6).**
 docs/plans/E7-news-vertical.md.
 - T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
   `WithDefaults()` deliberately left untouched. Ran via the kazi lane
@@ -163,6 +163,18 @@ docs/plans/E7-news-vertical.md.
   the real commit onto the task branch, added missing test coverage, and
   re-ran the full validation ladder before shipping. 2026-08-30. (PR #62,
   checkbox PR #63)
+- T7.3 `provider/gdelt` -- new `types.Provider` calling GDELT's DOC 2.0
+  JSON API (no API key), self-registered as `"gdelt"`, fixed to vertical
+  `"news"` (doc comment warns against wiring it into the general chain,
+  recommends `rps: 1`). Ran via the kazi lane (claude-sonnet-5);
+  converged cleanly on a scheduler-owned `kazi-partition/p-<hash>`
+  branch (expected under `--parallel`, not a false negative this time).
+  Independently verified before shipping anyway: rebased + cherry-picked
+  the real commit onto `task/t7-3-provider-gdelt`, re-ran the full
+  validation ladder (`go build`, `go vet`, `go test -race -v` — 6/6
+  pass, `gofmt -l`, the CI-pinned `golangci-lint`, and the full
+  race+cover suite) before opening the PR. 2026-08-30. (PR #66, checkbox
+  PR #67)
 
 **T9.0 (2026-08-30):** expanded E9 (Streaming Search Results) to
 executable fidelity, 5 tasks (T9.1-T9.5), docs/plans/E9-streaming-search.md.
@@ -200,8 +212,9 @@ See `docs/plan.md` for full detail; `acc:` lines are kazi predicates,
 derived just-in-time by `/apply`.
 
 - E7 News Vertical (6 tasks, fidelity: executable) --
-  docs/plans/E7-news-vertical.md. T7.1 shipped (see Shipped); T7.2 and
-  T7.3 (deps: [T7.1]) are now claimable.
+  docs/plans/E7-news-vertical.md. T7.1 and T7.3 shipped (see Shipped);
+  T7.2 (deps: [T7.1]) is claimable now; T7.4/T7.5 (deps: [T7.2, T7.3])
+  are claimable once T7.2 lands; T7.6 (deps: [T7.4, T7.5]) after those.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
   docs/plans/E8-images-vertical.md. Every task `deps:` on its matching
   T7.x, so nothing is claimable until E7 lands the piece it needs.
