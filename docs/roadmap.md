@@ -152,6 +152,23 @@ entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
 E7 without a manual wave gate.
 
+**E8 -- Images Vertical -- IN PROGRESS (T8.1/5).**
+docs/plans/E8-images-vertical.md.
+- T8.1 `types.Result` gains three optional, `omitempty` fields --
+  `ThumbnailURL string`, `Width int`, `Height int` -- for a later images
+  provider to populate. Zero-value fields are omitted from JSON, so
+  general web providers and existing callers are unaffected. Deviation:
+  the kazi proposal (`prop-t8-1-result-thumbnail-fields`) was drafted and
+  approved, and its t0 `--check` correctly showed all 4 capability
+  predicates red / all guards green, but it was never actually dispatched
+  via `kazi apply --parallel` -- an external check of `kazi status
+  t8-1-result-thumbnail-fields` (a proposal with no run yet) was
+  misread as an L-0007 orphaning symptom, and the lane was abandoned in
+  favor of hand-implementation before a real convergence attempt was
+  made. Hand-implemented instead (`go vet`/`go build`/`go test -race
+  -cover` all green, `types` package stays at 100% coverage, plus two new
+  tests -- zero-value omission and JSON round-trip). 2026-08-30. (PR #72)
+
 **E7 -- News Vertical -- IN PROGRESS (T7.1, T7.3/6).**
 docs/plans/E7-news-vertical.md.
 - T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
@@ -216,8 +233,12 @@ derived just-in-time by `/apply`.
   T7.2 (deps: [T7.1]) is claimable now; T7.4/T7.5 (deps: [T7.2, T7.3])
   are claimable once T7.2 lands; T7.6 (deps: [T7.4, T7.5]) after those.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
-  docs/plans/E8-images-vertical.md. Every task `deps:` on its matching
-  T7.x, so nothing is claimable until E7 lands the piece it needs.
+  docs/plans/E8-images-vertical.md. T8.1 shipped (see Shipped). T8.2
+  (deps: [T7.2, T8.1]) is claimable now -- `feat(saka): route Search
+  through per-vertical provider chains` (commit 767b6f6) landed T7.2 on
+  main, and T8.1 is merged. T8.3/T8.4 (deps: [T7.4, T7.5, T8.2] /
+  [T7.5, T8.2]) wait on T8.2 plus their T7.x counterparts; T8.5 (deps:
+  [T8.3, T8.4]) after those.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
   docs/plans/E9-streaming-search.md. T9.1 (SearchStream on
   types.Searcher/Engine) has no deps, claimable now.
