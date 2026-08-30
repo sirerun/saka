@@ -12,6 +12,7 @@ import (
 	"github.com/sirerun/saka/chain"
 	"github.com/sirerun/saka/fetch"
 	_ "github.com/sirerun/saka/provider/duckduckgo"
+	_ "github.com/sirerun/saka/provider/gdelt"
 	_ "github.com/sirerun/saka/provider/searxng"
 	_ "github.com/sirerun/saka/provider/startpage"
 	"github.com/sirerun/saka/types"
