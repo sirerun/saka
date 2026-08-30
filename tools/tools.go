@@ -26,6 +26,10 @@ const searchSchema = `{
     "site": {
       "type": "string",
       "description": "Restrict results to this domain, e.g. 'arxiv.org'."
+    },
+    "vertical": {
+      "type": "string",
+      "description": "Search a specific vertical instead of general web results, e.g. 'news'. Omit for general web search."
     }
   },
   "required": ["query"]
@@ -91,6 +95,7 @@ type searchArgs struct {
 	Query      string `json:"query"`
 	MaxResults int    `json:"max_results"`
 	Site       string `json:"site"`
+	Vertical   string `json:"vertical"`
 }
 
 type fetchArgs struct {
@@ -110,6 +115,7 @@ func ExecuteTool(ctx context.Context, engine saka.Searcher, name string, args js
 			Text:       a.Query,
 			MaxResults: a.MaxResults,
 			Site:       a.Site,
+			Vertical:   a.Vertical,
 		})
 		if err != nil {
 			return "", err
