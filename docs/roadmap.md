@@ -136,12 +136,27 @@ session): docs/adr/003-search-verticals.md records the mechanism
 (`Query.Vertical` field + one `chain.Chain` per vertical in `Engine`,
 generalizing to any future vertical without touching `chain.Chain` or
 the provider registry); docs/plans/E7-news-vertical.md has the 6-task
-breakdown (T7.1-T7.6). E8/E9 triggered but not yet expanded -- T8.0/T9.0
-still need to run.
+breakdown (T7.1-T7.6).
+
+**T8.0 (2026-08-30):** expanded E8 (Images Vertical) to executable
+fidelity, 5 tasks (T8.1-T8.5), docs/plans/E8-images-vertical.md. Source
+per David's decision: SearXNG's `categories=images` mode against the
+existing self-hosted SearXNG instance (not a dedicated image API), plus
+extending `types.Result` with `ThumbnailURL`/`Width`/`Height`. Confirms
+ADR 003's "verticals compose" prediction -- no new ADR, `chain.Chain`,
+or registry change; recorded as an addendum to ADR 003 instead of a new
+ADR since it's new information on an already-covered decision. New
+provider: `provider/searxng`'s `images.go`, self-registering as
+`"searxng-images"` (not reusing the `"searxng"` name, so a `saka.json`
+entry stays unambiguous about which vertical it belongs to). Each E8
+task `deps:` on its matching T7.x task, so the pool sequences E8 behind
+E7 without a manual wave gate. E9 still triggered but not yet expanded
+-- T9.0 still needs to run.
 
 ## In progress
 
-- None. E7's 6 tasks (T7.1-T7.6) are claimable but not yet claimed.
+- None. E7's 6 tasks (T7.1-T7.6) are claimable now; E8's 5 tasks
+  (T8.1-T8.5) become claimable as their T7.x deps land.
 
 ## In flight (PRs open)
 
@@ -155,11 +170,12 @@ derived just-in-time by `/apply`.
 - E7 News Vertical (6 tasks, fidelity: executable) --
   docs/plans/E7-news-vertical.md. T7.1 (Query.Vertical field) has no
   deps, claimable now.
-- E8 Images Vertical, E9 Streaming Search Results -- triggered by David
-  2026-08-29, still `fidelity: outline`. Run T8.0/T9.0 (via `/plan`
-  scoped to each epic, same as T7.0) before either has claimable
-  engineering tasks. E8 should reuse ADR 003's exact mechanism
-  (`Vertical: "images"`, a new `provider/*`) rather than a new one.
+- E8 Images Vertical (5 tasks, fidelity: executable) --
+  docs/plans/E8-images-vertical.md. Every task `deps:` on its matching
+  T7.x, so nothing is claimable until E7 lands the piece it needs.
+- E9 Streaming Search Results -- triggered by David 2026-08-29, still
+  `fidelity: outline`. Run T9.0 (via `/plan` scoped to E9) before it has
+  claimable engineering tasks.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 

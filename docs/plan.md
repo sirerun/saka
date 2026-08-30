@@ -122,7 +122,8 @@ Constraints).
 | D4 | Working install.sh/brew install path | this session | **SHIPPED** 2026-08-29 -- real v0.1.0 release, `brew install sirerun/tap/saka` verified live |
 | D5 | Helm chart at deploy/helm/saka | this session | **SHIPPED** 2026-08-29 -- helm-smoke CI job green |
 | D7 | E7 expanded to executable fidelity | this session | **SHIPPED** 2026-08-29 -- see docs/plans/E7-news-vertical.md |
-| D8-D9 | E8/E9 expanded to executable fidelity | pool | Each epic's `T*.0` planning task `[x]` |
+| D8 | E8 expanded to executable fidelity | this session | **SHIPPED** 2026-08-30 -- see docs/plans/E8-images-vertical.md |
+| D9 | E9 expanded to executable fidelity | pool | `T9.0` `[x]` |
 | D6 | E6 expanded to executable fidelity | -- | Parked; not triggered (needs a founder decision on a store/Stripe backend) |
 
 ## 4. Checkable Work Breakdown
@@ -142,7 +143,7 @@ Counts are `(done/total)`, regenerated on every `/plan`/`/tidy` run.
 **Active (founder-triggered 2026-08-29 -- David greenlit E7/E8/E9, explicitly left E6 parked):**
 
 ### E7 -- News Vertical  -> docs/plans/E7-news-vertical.md  (0/6)  fidelity: executable
-### E8 -- Images Vertical  -> docs/plans/E8-images-vertical.md  (0/1)  fidelity: outline  (triggered; T8.0 not yet run)
+### E8 -- Images Vertical  -> docs/plans/E8-images-vertical.md  (0/5)  fidelity: executable
 ### E9 -- Streaming Search Results  -> docs/plans/E9-streaming-search.md  (0/1)  fidelity: outline  (triggered; T9.0 not yet run)
 
 **Parked (not triggered; needs a founder decision before its planning task can run):**
@@ -174,7 +175,7 @@ what was found, what was fixed).
 
 ### Wave 6: Future planning
 - [x] T7.0 PLAN: expand E7 -- done this run, see docs/plans/E7-news-vertical.md
-- [ ] T8.0 PLAN: expand E8 -- triggered (David greenlit 2026-08-29), not yet run
+- [x] T8.0 PLAN: expand E8 -- done this run, see docs/plans/E8-images-vertical.md
 - [ ] T9.0 PLAN: expand E9 -- triggered (David greenlit 2026-08-29), not yet run
 - [ ] T6.0 PLAN: expand E6 -- parked, not triggered (needs a founder decision on a store/Stripe backend)
 
@@ -185,6 +186,13 @@ what was found, what was fixed).
 - [ ] T7.4 REST + CLI wiring
 - [ ] T7.5 MCP + tool-schema wiring
 - [ ] T7.6 Docs
+
+### Wave 8: E8 execution (5 tasks, claimable once their T7.x deps land)
+- [ ] T8.1 types.Result ThumbnailURL/Width/Height fields (deps: T7.1)
+- [ ] T8.2 provider/searxng images.go, "searxng-images" (deps: T7.2, T8.1)
+- [ ] T8.3 REST + CLI proof (deps: T7.4, T8.2)
+- [ ] T8.4 MCP + tool-schema proof (deps: T7.5, T8.2)
+- [ ] T8.5 Docs (deps: T8.3, T8.4)
 
 ## 6. Timeline and Milestones
 
@@ -231,6 +239,18 @@ Definition of done (all apply unless a task states a stated exception):
 
 ## 9. Progress Log
 
+**2026-08-30 -- Change Summary (T8.0):** Ran T8.0: expanded E8 (Images
+Vertical) to executable fidelity (5 tasks, T8.1-T8.5) per David's source
+decision (SearXNG's `categories=images` mode, plus extending
+`types.Result` with `ThumbnailURL`/`Width`/`Height`). Confirmed ADR 003's
+"verticals compose" prediction -- no new ADR, no `chain.Chain` or
+registry change, just a new `provider/searxng` sibling
+(`"searxng-images"`) and a `Vertical: "images"` config value; recorded
+the Result-shape extension as an addendum to ADR 003 rather than a new
+ADR (it's new information on an already-covered decision, not a new
+decision per the ADR-creation rule). Each E8 task `deps:` on its
+matching T7.x task so the pool sequences E8 behind E7 automatically.
+
 **2026-08-29 -- Change Summary (this run, T7.0):** E1-E5 all shipped via
 `/apply --pool` (23 tasks, ~35 PRs, real v0.1.0 release cut with 6
 previously-uncaught release-pipeline bugs found and fixed along the way
@@ -252,25 +272,31 @@ this plan's epics under Planned.
 
 ## 10. Hand-off Notes
 
-- E1-E5 are done. `/apply --pool` on this plan now has E7's 6 tasks as
-  its primary claimable work (T7.1 first, no deps; see
-  docs/plans/E7-news-vertical.md for the full dependency graph).
+- E1-E5 are done. `/apply --pool` on this plan now has E7's 6 tasks and
+  E8's 5 tasks as claimable work (T7.1 and T8.1 first; E8's tasks each
+  `deps:` on their matching T7.x, so the pool naturally sequences E8
+  behind E7 without a manual wave gate -- see docs/plans/E7-news-vertical.md
+  and docs/plans/E8-images-vertical.md for the full dependency graphs).
 - `kazi` is on PATH; every task's `acc:` line is what `/apply`'s kazi
   execution lane will derive a predicate from at dispatch time (never at
   plan time -- see apply/KAZI-EXEC.md).
 - T4.2/T4.4 (`kind: human`/founder-decision items) are done -- T4.2
   turned out to need no action (the shared homebrew-tap repo already
   existed); T4.4 cut the real v0.1.0 release.
-- E8 and E9 are triggered (David greenlit them 2026-08-29) but not yet
-  expanded -- run T8.0 and T9.0 (via `/plan` scoped to each epic, same
-  as T7.0 was run) before either has claimable engineering tasks. E6
-  stays parked; do not run T6.0 without a fresh founder decision on a
-  store/Stripe backend.
-- E7's design (docs/adr/003-search-verticals.md) generalizes past news:
-  E8 (images) should reuse the exact same `Query.Vertical` +
-  per-vertical-chain mechanism with a new `provider/*` implementation
-  and `Vertical: "images"`, not a new mechanism. Read ADR 003 before
-  planning E8.
+- E9 is triggered (David greenlit it 2026-08-29) but not yet expanded --
+  run T9.0 (via `/plan` scoped to E9, same as T7.0/T8.0 were run) before
+  it has claimable engineering tasks. E6 stays parked; do not run T6.0
+  without a fresh founder decision on a store/Stripe backend.
+- E7's design (docs/adr/003-search-verticals.md, plus its 2026-08-30
+  addendum) generalizes past news: E8 (images) reused the exact same
+  `Query.Vertical` + per-vertical-chain mechanism with a new
+  `provider/searxng` sibling (`"searxng-images"`) and `Vertical: "images"`,
+  no new mechanism -- and its own extension (`types.Result`'s
+  ThumbnailURL/Width/Height fields) is recorded in that same ADR's
+  addendum rather than a new ADR. E9 (streaming) should be checked
+  against the same ADR before planning: it likely does NOT need a new
+  vertical (streaming is orthogonal to which vertical is queried), so
+  read ADR 003 to confirm before assuming it applies.
 - No secrets in this repo's plan; Stripe credentials (if/when E6
   triggers) belong in the operator's own secret store, never in `docs/`.
 
