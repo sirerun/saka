@@ -64,6 +64,7 @@ func doSearch(args []string) {
 	n := fs.Int("n", 10, "max results")
 	format := fs.String("format", "table", "table|json|markdown")
 	site := fs.String("site", "", "restrict to site")
+	vertical := fs.String("vertical", "", "search vertical (e.g. news); empty = general web")
 	_ = fs.Parse(args)
 	if fs.NArg() < 1 {
 		fatal(fmt.Errorf("usage: saka search [flags] \"query\""))
@@ -74,6 +75,7 @@ func doSearch(args []string) {
 		Text:       strings.Join(fs.Args(), " "),
 		MaxResults: *n,
 		Site:       *site,
+		Vertical:   *vertical,
 	})
 	if err != nil {
 		fatal(err)
@@ -180,7 +182,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, `saka — free web search, no API keys
 
 Usage:
-  saka search "query" [-n 10] [--format table|json|markdown] [--site example.com] [--config saka.json]
+  saka search "query" [-n 10] [--format table|json|markdown] [--site example.com] [--vertical news] [--config saka.json]
   saka fetch <url> [--format text|json|markdown] [--config saka.json]
   saka serve [--addr :8080] [--mcp] [--config saka.json] [--keys saka_ed25519.pub] [--admin-key TOKEN]
   saka keys [--tier free|standard|pro] [--n 1] [--exp-days 365] [--priv path]
