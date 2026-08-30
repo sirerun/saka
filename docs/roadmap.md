@@ -70,12 +70,36 @@ docs/plans/E5-helm-chart.md. 2026-08-29.
 - T5.4 README documents the Helm install path alongside kubectl apply.
   (PR #44, checkbox PR #45)
 
-**E4 -- Install & Release Distribution -- partial.**
-docs/plans/E4-install-distribution.md.
+**E4 -- Install & Release Distribution -- COMPLETE (T4.1-T4.4).**
+docs/plans/E4-install-distribution.md. 2026-08-29.
 - T4.1 David decided: point install.sh/README at GitHub releases, no
-  domain purchase. 2026-08-29.
+  domain purchase.
+- T4.2 no action needed -- `sirerun/homebrew-tap` already existed as a
+  shared tap for other sirerun tools (serenity, mint, gist). Added the
+  org secret `HOMEBREW_TAP_GITHUB_TOKEN` to `saka`'s selected-repos list
+  (it existed but `saka` wasn't yet granted access).
 - T4.3 install.sh/README repointed accordingly. (PR #15)
-- T4.2, T4.4 -- see Blocked.
+- T4.4 cut the real v0.1.0 release. Found and fixed SIX previously-
+  uncaught bugs in a release pipeline that had never run before (this
+  repo had zero prior tags): (1) `ci.yml` missing `workflow_call:`
+  trigger, needed by `release.yml`'s reusable-workflow call (PR #50);
+  (2) `release.yml`'s `setup-go` pinned to Go 1.22 vs `go.mod`'s
+  `>=1.25` requirement (PR #51); (3) `release.yml` read the brew token
+  from `secrets.HOMEBREW_TOKEN`, a secret that doesn't exist, instead of
+  `secrets.HOMEBREW_TAP_GITHUB_TOKEN` (PR #51); (4) `.goreleaser.yaml`'s
+  `brews.repository` never referenced the token via `token:`, so it
+  would have silently fallen back to the repo-scoped `GITHUB_TOKEN`
+  (PR #51, plus `version: 2` added to silence a schema warning); (5) the
+  project claimed Apache-2.0 everywhere but never shipped a `LICENSE`
+  file -- added a verbatim, byte-diffed copy from apache.org (PR #52);
+  (6) the first successful run published the formula to homebrew-tap's
+  repo root instead of `Formula/saka.rb` (no `directory:` set) --
+  confirmed broken with a real failed `brew install`, fixed with
+  `directory: Formula` (PR #53), stray file deleted from homebrew-tap
+  directly. Real end-to-end verification: `brew untap` / `brew tap
+  sirerun/tap` / `brew install sirerun/tap/saka` on this machine
+  actually installed the binary (6 files, 7.9MB) and `saka search`
+  returned live results. (PR #15, checkbox PR #54 for T4.2/T4.4)
 
 **Coordinator findings this session** (docs/lore.md, all 2026-08-29):
 - L-0001: kazi-lane subagents must resolve primary-checkout git issues
@@ -103,9 +127,21 @@ docs/plans/E4-install-distribution.md.
   merged worktrees/branches that agents had reported as cleaned up but
   weren't.
 
+**Founder decisions, E1-E5 complete (all 2026-08-29):** David greenlit
+E7 (News), E8 (Images), and E9 (Streaming) to proceed; explicitly left
+E6 (Billing) parked. News source: GDELT DOC 2.0 API (free, no API key --
+verified via research; satisfies David's "dedicated API if a free one
+exists" condition). E7 expanded to executable fidelity (T7.0, this
+session): docs/adr/003-search-verticals.md records the mechanism
+(`Query.Vertical` field + one `chain.Chain` per vertical in `Engine`,
+generalizing to any future vertical without touching `chain.Chain` or
+the provider registry); docs/plans/E7-news-vertical.md has the 6-task
+breakdown (T7.1-T7.6). E8/E9 triggered but not yet expanded -- T8.0/T9.0
+still need to run.
+
 ## In progress
 
-- None. The claimable pool is empty.
+- None. E7's 6 tasks (T7.1-T7.6) are claimable but not yet claimed.
 
 ## In flight (PRs open)
 
@@ -116,28 +152,19 @@ docs/plans/E4-install-distribution.md.
 See `docs/plan.md` for full detail; `acc:` lines are kazi predicates,
 derived just-in-time by `/apply`.
 
-- E6 Usage Persistence & Billing, E7 News Vertical, E8 Images Vertical,
-  E9 Streaming Search Results -- each an outline-fidelity epic with one
-  `T*.0 PLAN` task, `deps: [T1.5, T2.4, T3.6, T4.4, T5.4]`. E1/E2/E3/E5's
-  deps are satisfied; **all four remain blocked on T4.4**, which is
-  itself blocked on T4.2 (see Blocked). Nothing here is claimable until
-  David unblocks E4.
+- E7 News Vertical (6 tasks, fidelity: executable) --
+  docs/plans/E7-news-vertical.md. T7.1 (Query.Vertical field) has no
+  deps, claimable now.
+- E8 Images Vertical, E9 Streaming Search Results -- triggered by David
+  2026-08-29, still `fidelity: outline`. Run T8.0/T9.0 (via `/plan`
+  scoped to each epic, same as T7.0) before either has claimable
+  engineering tasks. E8 should reuse ADR 003's exact mechanism
+  (`Vertical: "images"`, a new `provider/*`) rather than a new one.
+- E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
+  founder decision (a store/Stripe backend choice) before T6.0 can run.
 
 ## Blocked
 
-- **T4.2** (create the `sirerun/homebrew-tap` GitHub repo -- corrected
-  name; `.goreleaser.yaml`'s `brews:` section already targets
-  `homebrew-tap`, not `tap` -- with a `Formula/saka.rb` scaffold) is
-  `kind: human`, Owner: David. Real external infrastructure (a new
-  GitHub repo), not code -- the pool cannot do this. Blink MCP is not
-  connected in this session, so it could not be auto-scheduled onto
-  David's task queue.
-- **T4.4** (cut a test release, verify `brew install sirerun/tap/saka`)
-  depends on T4.2 and T4.3 (T4.3 done). Stays blocked until T4.2 lands.
-  Note for whoever picks this up: T4.3's PR flagged that
-  `.goreleaser.yaml`'s archive `name_template` is version-less but
-  `install.sh`'s download step expects a version-qualified filename --
-  these won't match once a real release is cut; needs reconciling as
-  part of T4.4.
-- **E6.0/E7.0/E8.0/E9.0** (the four Future-roadmap planning tasks) --
-  transitively blocked on T4.4 above via their shared `deps:` list.
+- **E6** is parked (David's explicit choice, 2026-08-29) -- not blocked
+  on anything technical, just not triggered. T6.0 should not run without
+  a fresh founder decision on the billing store/Stripe backend.
