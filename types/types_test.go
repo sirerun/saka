@@ -75,6 +75,32 @@ func TestQueryWithDefaults(t *testing.T) {
 	}
 }
 
+func TestQueryWithDefaultsLeavesVerticalUntouched(t *testing.T) {
+	q := Query{Text: "x"}.WithDefaults()
+	if q.Vertical != "" {
+		t.Errorf("want empty Vertical left untouched, got %q", q.Vertical)
+	}
+
+	q = Query{Text: "x", Vertical: "news"}.WithDefaults()
+	if q.Vertical != "news" {
+		t.Errorf("want Vertical preserved as %q, got %q", "news", q.Vertical)
+	}
+}
+
+func TestQueryVerticalField(t *testing.T) {
+	q := Query{Vertical: "news"}
+	if q.Vertical != "news" {
+		t.Errorf("want Vertical %q, got %q", "news", q.Vertical)
+	}
+}
+
+func TestProviderConfigVerticalField(t *testing.T) {
+	pc := ProviderConfig{Name: "gdelt", Vertical: "news"}
+	if pc.Vertical != "news" {
+		t.Errorf("want Vertical %q, got %q", "news", pc.Vertical)
+	}
+}
+
 func TestPageChunksNoText(t *testing.T) {
 	p := &Page{URL: "https://x"}
 	if _, err := p.Chunks(); err == nil {
