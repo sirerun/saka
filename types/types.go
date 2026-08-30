@@ -40,6 +40,12 @@ type Result struct {
 	Snippet  string `json:"snippet"`
 	Source   string `json:"source"`
 	Position int    `json:"position"`
+	// ThumbnailURL, Width, and Height are set by verticals that return
+	// media results (e.g. images); general web providers leave them
+	// zero. See docs/adr/003-search-verticals.md's 2026-08-29 addendum.
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	Width        int    `json:"width,omitempty"`
+	Height       int    `json:"height,omitempty"`
 }
 
 // Results is a search response.
