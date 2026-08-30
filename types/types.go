@@ -19,6 +19,10 @@ type Query struct {
 	Region     string // e.g. "us-en"
 	SafeSearch bool
 	Site       string // restrict to host
+	// Vertical selects a non-general search vertical (e.g. "news",
+	// "images"). Empty means the general web chain. See
+	// docs/adr/003-search-verticals.md.
+	Vertical string
 }
 
 // WithDefaults returns a copy with MaxResults set when unset.
@@ -113,6 +117,10 @@ type ProviderConfig struct {
 	URL     string  `json:"url,omitempty"`
 	RPS     float64 `json:"rps,omitempty"`
 	Retries int     `json:"retries,omitempty"`
+	// Vertical assigns this provider to a non-general search vertical
+	// (e.g. "news", "images"). Empty means the general web chain. See
+	// docs/adr/003-search-verticals.md.
+	Vertical string `json:"vertical,omitempty"`
 }
 
 // RateLimitError signals a provider is throttled; triggers chain fallback.
