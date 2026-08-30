@@ -152,6 +152,18 @@ entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
 E7 without a manual wave gate.
 
+**E7 -- News Vertical -- IN PROGRESS (T7.1/6).**
+docs/plans/E7-news-vertical.md.
+- T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
+  `WithDefaults()` deliberately left untouched. Ran via the kazi lane
+  (claude-sonnet-5); the run's own `landed` predicate false-negatived
+  because `--parallel` lands work on a scheduler-owned
+  `kazi-partition/p-<hash>` branch, not `task/<goal-id>` -- verified this
+  independently (every other predicate converged green), cherry-picked
+  the real commit onto the task branch, added missing test coverage, and
+  re-ran the full validation ladder before shipping. 2026-08-30. (PR #62,
+  checkbox PR #63)
+
 **T9.0 (2026-08-30):** expanded E9 (Streaming Search Results) to
 executable fidelity, 5 tasks (T9.1-T9.5), docs/plans/E9-streaming-search.md.
 Per David's decision: stream only once a provider succeeds, no partial-
@@ -170,30 +182,17 @@ are now at `fidelity: executable`; only E6 (parked) remains outline.
 
 ## In progress
 
-- T7.1 (Query.Vertical/ProviderConfig.Vertical fields): the prior
-  session's claim (2026-08-30T07:14Z, see the handover doc referenced
-  below) went stale -- 10h old past the 4h TTL, its worktree held zero
-  committed work. Pruned via `/claim --prune` and re-claimed/redispatched
-  to a fresh kazi-lane agent, 2026-08-30T17:2xZ. Worktree:
-  `saka-worktrees/t7-1-query-vertical-field`, branch
-  `task/t7-1-query-vertical-field`. No PR yet.
 - T9.1 (SearchStream on types.Searcher/Engine): claimed and dispatched to
   a kazi-lane agent, 2026-08-30T17:2xZ (first attempt, no prior claim).
   Worktree: `saka-worktrees/t9-1-searchstream`, branch
-  `task/t9-1-searchstream`. No PR yet. Runs concurrently with T7.1;
-  both touch `types/types.go` in unrelated sections (T7.1 primary owner,
-  T9.1 secondary/additive) -- see each task's dispatch prompt for the
-  overlap handling.
-
-Prior handover doc for context on the stale T7.1 claim:
-`docs/handover.md` on the `handover` branch (2026-08-30T07:35Z, `git
-fetch origin handover`) -- superseded by this entry now that the claim
-has been pruned and redispatched.
+  `task/t9-1-searchstream`. No PR yet. T7.1 (the other concurrent editor
+  of `types/types.go`) has since merged (PR #62) -- T9.1's `SearchStream`
+  addition is in an unrelated section of the file, but rebase onto main
+  if a conflict shows up.
 
 ## In flight (PRs open)
 
-- None yet from T7.1/T9.1's dispatch -- check back once their agents
-  report.
+- None yet from T9.1's dispatch -- check back once its agent reports.
 
 ## Planned
 
@@ -201,8 +200,8 @@ See `docs/plan.md` for full detail; `acc:` lines are kazi predicates,
 derived just-in-time by `/apply`.
 
 - E7 News Vertical (6 tasks, fidelity: executable) --
-  docs/plans/E7-news-vertical.md. T7.1 (Query.Vertical field) claimed
-  and dispatched (see In progress).
+  docs/plans/E7-news-vertical.md. T7.1 shipped (see Shipped); T7.2 and
+  T7.3 (deps: [T7.1]) are now claimable.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
   docs/plans/E8-images-vertical.md. Every task `deps:` on its matching
   T7.x, so nothing is claimable until E7 lands the piece it needs.
