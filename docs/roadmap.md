@@ -150,17 +150,32 @@ provider: `provider/searxng`'s `images.go`, self-registering as
 `"searxng-images"` (not reusing the `"searxng"` name, so a `saka.json`
 entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
-E7 without a manual wave gate. E9 still triggered but not yet expanded
--- T9.0 still needs to run.
+E7 without a manual wave gate.
+
+**T9.0 (2026-08-30):** expanded E9 (Streaming Search Results) to
+executable fidelity, 5 tasks (T9.1-T9.5), docs/plans/E9-streaming-search.md.
+Per David's decision: stream only once a provider succeeds, no partial-
+per-provider streaming. New ADR (docs/adr/004-search-streaming.md, not
+an ADR 003 addendum -- this is a distinct decision): `types.Searcher`
+gains `SearchStream(ctx, Query) (<-chan Result, <-chan *Results, <-chan
+error)`, mirroring the existing `Fetch`/`FetchStream` channel-shape
+precedent; `Engine.SearchStream` calls the existing synchronous `Search`
+internally and streams its results, so `chain.Chain`'s fallback logic is
+untouched. `saka.Engine` is confirmed the only concrete `types.Searcher`
+implementer in this repo, so the interface addition is single-site. MCP
+streaming is explicitly out of scope this pass (stdio JSON-RPC transport
+is request/response, not SSE). T9.4 proves streaming composes with
+E7/E8's vertical mechanism. All three founder-greenlit epics (E7/E8/E9)
+are now at `fidelity: executable`; only E6 (parked) remains outline.
 
 ## In progress
 
-- None. E7's 6 tasks (T7.1-T7.6) are claimable now; E8's 5 tasks
-  (T8.1-T8.5) become claimable as their T7.x deps land.
+- T7.1 (Query.Vertical/ProviderConfig.Vertical fields) claimed and
+  dispatched to a kazi-lane agent, 2026-08-30.
 
 ## In flight (PRs open)
 
-- None.
+- None yet from T7.1's dispatch -- check back once its agent reports.
 
 ## Planned
 
@@ -168,14 +183,14 @@ See `docs/plan.md` for full detail; `acc:` lines are kazi predicates,
 derived just-in-time by `/apply`.
 
 - E7 News Vertical (6 tasks, fidelity: executable) --
-  docs/plans/E7-news-vertical.md. T7.1 (Query.Vertical field) has no
-  deps, claimable now.
+  docs/plans/E7-news-vertical.md. T7.1 (Query.Vertical field) claimed
+  and dispatched (see In progress).
 - E8 Images Vertical (5 tasks, fidelity: executable) --
   docs/plans/E8-images-vertical.md. Every task `deps:` on its matching
   T7.x, so nothing is claimable until E7 lands the piece it needs.
-- E9 Streaming Search Results -- triggered by David 2026-08-29, still
-  `fidelity: outline`. Run T9.0 (via `/plan` scoped to E9) before it has
-  claimable engineering tasks.
+- E9 Streaming Search Results (5 tasks, fidelity: executable) --
+  docs/plans/E9-streaming-search.md. T9.1 (SearchStream on
+  types.Searcher/Engine) has no deps, claimable now.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 
