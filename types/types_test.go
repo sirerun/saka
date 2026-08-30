@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -130,6 +131,36 @@ func TestPageChunks(t *testing.T) {
 	}
 	if !chunks[3].Done {
 		t.Error("want final chunk marked Done")
+	}
+}
+
+func TestResultThumbnailFieldsZeroValueOmitted(t *testing.T) {
+	r := Result{Title: "t"}
+	b, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	s := string(b)
+	for _, key := range []string{`"thumbnail_url"`, `"width"`, `"height"`} {
+		if strings.Contains(s, key) {
+			t.Errorf("zero-value Result JSON unexpectedly contains %s: %s", key, s)
+		}
+	}
+}
+
+func TestResultThumbnailFieldsRoundTrip(t *testing.T) {
+	want := Result{Title: "t", ThumbnailURL: "https://example.com/t.jpg", Width: 640, Height: 480}
+	b, err := json.Marshal(want)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var got Result
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if got.ThumbnailURL != want.ThumbnailURL || got.Width != want.Width || got.Height != want.Height {
+		t.Errorf("round-trip mismatch: got %+v, want %+v", got, want)
 	}
 }
 
