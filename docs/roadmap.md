@@ -171,11 +171,16 @@ are now at `fidelity: executable`; only E6 (parked) remains outline.
 ## In progress
 
 - T7.1 (Query.Vertical/ProviderConfig.Vertical fields) claimed and
-  dispatched to a kazi-lane agent, 2026-08-30.
+  dispatched to a kazi-lane agent, 2026-08-30 -- still converging as of
+  session end, no PR yet. Session handed off; full state (claim/worktree/
+  branch names, how to check on the agent, landmines found) is in the
+  `handover` branch's `docs/handover.md` (2026-08-30T07:35Z). Fetch it
+  with `git fetch origin handover` before resuming.
 
 ## In flight (PRs open)
 
-- None yet from T7.1's dispatch -- check back once its agent reports.
+- None yet from T7.1's dispatch -- check back once its agent reports (see
+  the handover doc above for how to check).
 
 ## Planned
 
