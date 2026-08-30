@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	saka "github.com/sirerun/saka"
+	"github.com/sirerun/saka/types"
 )
 
 type fakeSearcher struct{}
@@ -48,5 +49,117 @@ func TestSchemasAreValidJSON(t *testing.T) {
 		if err := json.Unmarshal([]byte(s), &v); err != nil {
 			t.Errorf("invalid schema: %v", err)
 		}
+	}
+}
+
+func TestSearchSchemaHasOptionalVertical(t *testing.T) {
+	var schema struct {
+		Properties map[string]any `json:"properties"`
+		Required   []string       `json:"required"`
+	}
+	if err := json.Unmarshal([]byte(SearchSchema()), &schema); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := schema.Properties["vertical"]; !ok {
+		t.Fatal(`schema missing "vertical" property`)
+	}
+	for _, r := range schema.Required {
+		if r == "vertical" {
+			t.Fatal("vertical must be optional, not required")
+		}
+	}
+}
+
+func TestSearchArgsUnmarshalsVertical(t *testing.T) {
+	var a searchArgs
+	if err := json.Unmarshal([]byte(`{"query":"q","vertical":"news"}`), &a); err != nil {
+		t.Fatal(err)
+	}
+	if a.Vertical != "news" {
+		t.Errorf("Vertical = %q, want %q", a.Vertical, "news")
+	}
+}
+
+type capturingSearcher struct {
+	got *saka.Query
+}
+
+func (c capturingSearcher) Search(_ context.Context, q saka.Query) (*saka.Results, error) {
+	*c.got = q
+	return &saka.Results{Query: q.Text, Provider: "fake"}, nil
+}
+func (c capturingSearcher) Fetch(_ context.Context, u string) (*saka.Page, error) {
+	return &saka.Page{URL: u}, nil
+}
+func (c capturingSearcher) FetchStream(_ context.Context, _ string) (<-chan saka.Chunk, <-chan *saka.Page, <-chan error) {
+	return nil, nil, nil
+}
+
+func TestExecuteToolPassesVerticalThroughToQuery(t *testing.T) {
+	var got saka.Query
+	if _, err := ExecuteTool(context.Background(), capturingSearcher{got: &got}, "web_search",
+		json.RawMessage(`{"query":"ai news","vertical":"news"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if got.Vertical != "news" {
+		t.Errorf("Query.Vertical = %q, want %q", got.Vertical, "news")
+	}
+}
+
+// fakeVerticalProvider is a types.Provider stand-in registered under the
+// real "gdelt" name so TestExecuteToolRoutesNewsVerticalToGdeltProvider can
+// exercise the full ExecuteTool -> Engine -> chain -> provider path without
+// hitting GDELT's live API.
+type fakeVerticalProvider struct {
+	name  string
+	title string
+}
+
+func (f fakeVerticalProvider) Name() string { return f.name }
+func (f fakeVerticalProvider) Search(_ context.Context, _ types.Query) ([]types.Result, error) {
+	return []types.Result{{Title: f.title, URL: "https://x", Position: 1}}, nil
+}
+
+func init() {
+	if err := types.Register("gdelt", func(types.ProviderConfig) (types.Provider, error) {
+		return fakeVerticalProvider{name: "gdelt", title: "GDELT-NEWS-MARKER"}, nil
+	}); err != nil {
+		panic(err)
+	}
+	if err := types.Register("test-general-web", func(types.ProviderConfig) (types.Provider, error) {
+		return fakeVerticalProvider{name: "test-general-web", title: "GENERAL-WEB-MARKER"}, nil
+	}); err != nil {
+		panic(err)
+	}
+}
+
+func TestExecuteToolRoutesNewsVerticalToGdeltProvider(t *testing.T) {
+	engine, err := saka.New(saka.Config{
+		Providers: []saka.ProviderConfig{
+			{Name: "test-general-web", RPS: 1},
+			{Name: "gdelt", RPS: 1, Vertical: "news"},
+		},
+		Fetch: saka.FetchConfig{RPS: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := ExecuteTool(context.Background(), engine, "web_search",
+		json.RawMessage(`{"query":"ai regulation","vertical":"news"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "GDELT-NEWS-MARKER") {
+		t.Errorf("vertical=news should route through gdelt, got: %s", out)
+	}
+
+	out, err = ExecuteTool(context.Background(), engine, "web_search",
+		json.RawMessage(`{"query":"ai regulation"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "GENERAL-WEB-MARKER") {
+		t.Errorf("default search should stay on the general web chain, got: %s", out)
 	}
 }
