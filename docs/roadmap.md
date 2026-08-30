@@ -170,17 +170,30 @@ are now at `fidelity: executable`; only E6 (parked) remains outline.
 
 ## In progress
 
-- T7.1 (Query.Vertical/ProviderConfig.Vertical fields) claimed and
-  dispatched to a kazi-lane agent, 2026-08-30 -- still converging as of
-  session end, no PR yet. Session handed off; full state (claim/worktree/
-  branch names, how to check on the agent, landmines found) is in the
-  `handover` branch's `docs/handover.md` (2026-08-30T07:35Z). Fetch it
-  with `git fetch origin handover` before resuming.
+- T7.1 (Query.Vertical/ProviderConfig.Vertical fields): the prior
+  session's claim (2026-08-30T07:14Z, see the handover doc referenced
+  below) went stale -- 10h old past the 4h TTL, its worktree held zero
+  committed work. Pruned via `/claim --prune` and re-claimed/redispatched
+  to a fresh kazi-lane agent, 2026-08-30T17:2xZ. Worktree:
+  `saka-worktrees/t7-1-query-vertical-field`, branch
+  `task/t7-1-query-vertical-field`. No PR yet.
+- T9.1 (SearchStream on types.Searcher/Engine): claimed and dispatched to
+  a kazi-lane agent, 2026-08-30T17:2xZ (first attempt, no prior claim).
+  Worktree: `saka-worktrees/t9-1-searchstream`, branch
+  `task/t9-1-searchstream`. No PR yet. Runs concurrently with T7.1;
+  both touch `types/types.go` in unrelated sections (T7.1 primary owner,
+  T9.1 secondary/additive) -- see each task's dispatch prompt for the
+  overlap handling.
+
+Prior handover doc for context on the stale T7.1 claim:
+`docs/handover.md` on the `handover` branch (2026-08-30T07:35Z, `git
+fetch origin handover`) -- superseded by this entry now that the claim
+has been pruned and redispatched.
 
 ## In flight (PRs open)
 
-- None yet from T7.1's dispatch -- check back once its agent reports (see
-  the handover doc above for how to check).
+- None yet from T7.1/T9.1's dispatch -- check back once their agents
+  report.
 
 ## Planned
 
