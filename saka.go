@@ -78,15 +78,18 @@ func (c Config) Validate() error {
 	if len(c.Providers) == 0 {
 		return fmt.Errorf("saka: config has no providers")
 	}
-	seen := make(map[string]bool)
+	seenVertical := make(map[string]string)
 	for i, p := range c.Providers {
 		if p.Name == "" {
 			return fmt.Errorf("saka: providers[%d]: name is required", i)
 		}
-		if seen[p.Name] {
-			return fmt.Errorf("saka: providers[%d]: duplicate provider %q", i, p.Name)
+		if firstVertical, ok := seenVertical[p.Name]; ok {
+			if firstVertical == p.Vertical {
+				return fmt.Errorf("saka: providers[%d]: duplicate provider %q", i, p.Name)
+			}
+			return fmt.Errorf("saka: providers[%d]: provider %q is already configured for vertical %q, cannot reuse it for vertical %q", i, p.Name, firstVertical, p.Vertical)
 		}
-		seen[p.Name] = true
+		seenVertical[p.Name] = p.Vertical
 		if _, ok := types.Lookup(p.Name); !ok {
 			return fmt.Errorf("saka: providers[%d]: provider %q is not registered (known: %s)", i, p.Name, strings.Join(types.Registered(), ", "))
 		}
@@ -140,7 +143,10 @@ func homeDir() string {
 
 // Engine ties providers + fetcher together and implements Searcher.
 type Engine struct {
-	chain   *chain.Chain
+	// chains holds one chain.Chain per vertical, keyed by
+	// ProviderConfig.Vertical ("" is the general-web chain). See
+	// docs/adr/003-search-verticals.md.
+	chains  map[string]*chain.Chain
 	fetcher *fetch.Fetcher
 }
 
@@ -179,15 +185,30 @@ func New(cfg Config) (*Engine, error) {
 		fetcher.SetDiskCache(dc)
 	}
 
+	byVertical := make(map[string][]types.ProviderConfig)
+	for _, pc := range cfg.Providers {
+		byVertical[pc.Vertical] = append(byVertical[pc.Vertical], pc)
+	}
+	chains := make(map[string]*chain.Chain, len(byVertical))
+	for vertical, cfgs := range byVertical {
+		chains[vertical] = chain.New(cfgs, ps)
+	}
+
 	return &Engine{
-		chain:   chain.New(cfg.Providers, ps),
+		chains:  chains,
 		fetcher: fetcher,
 	}, nil
 }
 
-// Search runs the provider chain.
+// Search runs the provider chain for q.Vertical ("" is general web). It
+// returns an error if no provider is configured for the requested vertical.
 func (e *Engine) Search(ctx context.Context, q Query) (*Results, error) {
-	return e.chain.Search(ctx, q.WithDefaults())
+	q = q.WithDefaults()
+	c, ok := e.chains[q.Vertical]
+	if !ok {
+		return nil, fmt.Errorf("saka: no provider configured for vertical %q", q.Vertical)
+	}
+	return c.Search(ctx, q)
 }
 
 // Fetch retrieves and extracts a page.
