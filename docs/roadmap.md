@@ -295,7 +295,7 @@ is request/response, not SSE). T9.4 proves streaming composes with
 E7/E8's vertical mechanism. All three founder-greenlit epics (E7/E8/E9)
 are now at `fidelity: executable`; only E6 (parked) remains outline.
 
-**E9 -- Streaming Search Results -- IN PROGRESS (T9.1/5).**
+**E9 -- Streaming Search Results -- IN PROGRESS (T9.1, T9.3/5).**
 docs/plans/E9-streaming-search.md.
 - T9.1 `types.Searcher` gains `SearchStream(ctx, Query) (<-chan Result,
   <-chan *Results, <-chan error)`; `*saka.Engine` implements it by
@@ -317,6 +317,21 @@ docs/plans/E9-streaming-search.md.
   (PR #80; this checkbox and roadmap entry landed as a follow-up after
   the coordinator found the mark-done step had been skipped during a
   routine `/sitrep` pass, 2026-08-31T00:5xZ)
+- T9.3 wires `SearchStream` into the CLI: `saka search --stream` drains
+  the item channel and prints each result as it arrives instead of
+  waiting for `Engine.Search`'s full batch. Hand-implemented directly
+  (no kazi grind attempted). `doSearch` was split into a testable
+  `runSearch` seam and per-result printing was factored into
+  `printResults`/`printResult`, shared by both the batched and
+  streaming paths so the non-stream path's output is byte-identical to
+  before. New `cli/saka/main_test.go` proves incremental delivery with
+  a fake `Searcher` that delays each item and asserts output writes
+  land spread out over time, and that `--stream` never calls the
+  batched `Search` method. `--stream` is documented via the standard
+  `flag` package's generated `--help` output plus the top-level usage
+  banner. `go build`/`go vet`/`go test ./... -race -cover` green;
+  golangci-lint pinned to v2.13.2 (docs/lore.md L-0003) clean.
+  2026-08-30. (PR #91)
 
 ## In progress
 
