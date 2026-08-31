@@ -313,7 +313,7 @@ is request/response, not SSE). T9.4 proves streaming composes with
 E7/E8's vertical mechanism. All three founder-greenlit epics (E7/E8/E9)
 are now at `fidelity: executable`; only E6 (parked) remains outline.
 
-**E9 -- Streaming Search Results -- IN PROGRESS (T9.1, T9.3, T9.4/5).**
+**E9 -- Streaming Search Results -- IN PROGRESS (T9.1-T9.4, T9.5 remaining).**
 docs/plans/E9-streaming-search.md.
 - T9.1 `types.Searcher` gains `SearchStream(ctx, Query) (<-chan Result,
   <-chan *Results, <-chan error)`; `*saka.Engine` implements it by
@@ -359,16 +359,27 @@ docs/plans/E9-streaming-search.md.
   L-0011 signature as T9.1/T7.4/T8.2 (all real predicates green, only
   `guard-landed` red, no recoverable commit); hand-implemented directly
   against the approved predicate set instead. 2026-08-31. (PR #93)
-
-## In progress
-
-- T9.2 (new `GET /v1/search/stream` SSE endpoint, server/http.go, mirroring
-  the existing `/v1/stream` conventions): claimed and converging as of
-  2026-08-31T02:xx.
+- T9.2 New `GET /v1/search/stream` endpoint (server/http.go) wires
+  `SearchStream` into the REST API, mirroring `handleStream`'s SSE
+  conventions (`event: result` per Result, one final `event: done` with
+  the `*Results` summary, `event: error` on failure) and accepting the
+  same query params as `GET /v1/search` (`q`, `n`, `vertical`). Kazi's
+  `--parallel` run hit the same L-0011 signature as T9.1/T7.4/T8.2/T9.4 --
+  all 4 capability predicates and both non-landed guards green, only
+  `guard-landed` red at iteration 3 -- but this time a real, correct
+  commit existed on an orphaned `kazi-partition/*` branch (`5e6f817`),
+  found and independently verified (`go build`/`go vet`/`gofmt -l`
+  clean, full non-cli suite green with `-race -cover`, all 4 new tests
+  passing individually) rather than hand-re-implemented from scratch.
+  That commit also found and fixed a genuine race: `SearchStream`'s
+  contract only guarantees its done/error channel is sent to *before*
+  the item channel closes, not that a reader observes them in that
+  order, so the handler drains the item channel to completion before
+  ever reading done/error. 2026-08-31. (PR #96)
 
 ## In flight (PRs open)
 
-- None currently open -- T7.4, T8.2, T7.6, T8.4, T9.3, and T9.4 all
+- None currently open -- T7.4, T8.2, T7.6, T8.4, T9.2, T9.3, and T9.4 all
   merged (see Shipped); their bookkeeping (mark-done/roadmap PRs) is
   being landed by the coordinator in this same pass.
 
@@ -383,9 +394,8 @@ derived just-in-time by `/apply`.
   docs/plans/E8-images-vertical.md. T8.1-T8.4 shipped (see Shipped).
   T8.5 (deps: [T8.3, T8.4], both satisfied) is claimable now.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
-  docs/plans/E9-streaming-search.md. T9.1, T9.3, and T9.4 shipped (see
-  Shipped); T9.2 (deps: [T9.1]) is claimed and converging (see In
-  progress); T9.5 (deps: [T9.2, T9.3]) is claimable once T9.2 lands.
+  docs/plans/E9-streaming-search.md. T9.1-T9.4 shipped (see Shipped);
+  T9.5 (deps: [T9.2, T9.3], both satisfied) is claimable now.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 
