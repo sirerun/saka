@@ -1,0 +1,38 @@
+version: 2
+project_name: saka
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: saka
+    main: ./cli/saka
+    binary: saka
+    env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files: [README.md, LICENSE, saka.json.example]
+checksum:
+  name_template: checksums.txt
+snapshot:
+  version_template: "{{ incpatch .Version }}-dev"
+changelog:
+  sort: asc
+  filters:
+    exclude: ["^docs:", "^test:", "Merge pull request"]
+brews:
+  - repository:
+      owner: sirerun
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/sirerun/saka
+    description: Free web search — no API keys, embeddable, MCP-ready
+    license: Apache-2.0

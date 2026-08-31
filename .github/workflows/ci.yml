@@ -1,0 +1,96 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version: "1.27" }
+      - name: Vet
+        run: go vet ./...
+      - name: Test (race + cover)
+        run: |
+          pkgs=$(go list ./... | grep -v '/cli/')
+          go test $pkgs -race -coverprofile=coverage.out
+      - name: Coverage gate
+        # Honest floor, raised from 40% once E1's tests landed -- see
+        # docs/adr/002-coverage-gate-honesty.md. CLI main is excluded from the profile.
+        run: |
+          cov=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "coverage: $cov%"
+          [ "$(echo "$cov >= 55" | bc)" = 1 ] || { echo "coverage below 55%"; exit 1; }
+      - uses: actions/upload-artifact@v7
+        with: { name: coverage, path: coverage.out }
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version: "1.27" }
+      - uses: golangci/golangci-lint-action@v9
+        with: { version: v2.13.2 }
+
+  # Runs on GitHub-hosted runners (Docker + kind available there).
+  # Do not require Docker/kind on developer laptops.
+  k8s-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: saka
+      - name: Build image and load into kind
+        run: |
+          docker build -t saka:ci .
+          kind load docker-image saka:ci --name saka
+      - name: Apply manifests and smoke
+        run: |
+          chmod +x deploy/k8s/apply.sh deploy/smoke.sh
+          SAKA_IMAGE=saka:ci ./deploy/k8s/apply.sh
+          kubectl -n saka wait --for=condition=available deploy/saka --timeout=180s
+          kubectl -n saka port-forward svc/saka 8080:8080 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8080/health >/dev/null && break
+            sleep 1
+          done
+          SAKA_BASE_URL=http://127.0.0.1:8080 ./deploy/smoke.sh
+
+  # Same smoke check as k8s-smoke, but through the Helm chart instead of
+  # the plain kustomize manifests -- catches chart regressions separately.
+  helm-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: saka
+      - name: Build image and load into kind
+        run: |
+          docker build -t saka:ci .
+          kind load docker-image saka:ci --name saka
+      - name: Helm install and smoke
+        run: |
+          chmod +x deploy/smoke.sh
+          helm install saka deploy/helm/saka \
+            --set image.repository=saka \
+            --set image.tag=ci
+          kubectl -n saka wait --for=condition=available deploy/searxng --timeout=180s
+          kubectl -n saka wait --for=condition=available deploy/saka --timeout=180s
+          kubectl -n saka port-forward svc/saka 8080:8080 &
+          PF_PID=$!
+          trap 'kill $PF_PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8080/health >/dev/null && break
+            sleep 1
+          done
+          SAKA_BASE_URL=http://127.0.0.1:8080 ./deploy/smoke.sh

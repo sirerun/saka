@@ -1,0 +1,13 @@
+{
+  "providers": [
+    { "name": "searxng", "url": "http://localhost:8888", "rps": 5, "retries": 2 },
+    { "name": "duckduckgo", "rps": 1, "retries": 1 }
+  ],
+  "fetch": {
+    "rps": 2,
+    "cache_ttl_seconds": 3600,
+    "respect_robots": true
+  },
+  "_comment_news_vertical": "To enable the news vertical (GET /v1/search?vertical=news, saka search --vertical news), add this object to the providers array above. Needs no API key; keep rps <= 1 since GDELT is a shared public resource with no auth to throttle by. See docs/SPEC.md sec 3.3.1. This key itself is not read by saka -- unknown top-level fields are ignored -- it exists only to show the shape without activating the provider.",
+  "_example_news_vertical_provider": { "name": "gdelt", "vertical": "news", "rps": 1, "retries": 1 }
+}

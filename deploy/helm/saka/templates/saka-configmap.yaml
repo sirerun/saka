@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: saka-config
+  namespace: {{ include "saka.namespace" . }}
+  labels:
+    app.kubernetes.io/name: saka
+    app.kubernetes.io/part-of: saka
+data:
+  saka.json: |
+{{ .Values.config | indent 4 }}
