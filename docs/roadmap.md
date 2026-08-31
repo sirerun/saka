@@ -301,7 +301,10 @@ docs/plans/E9-streaming-search.md.
   same L-0011 signature as T9.1/T7.4/T8.2 (enforce worktree is a
   detached-HEAD checkout with no `@{u}`, reproduced directly: `git
   worktree add --detach` + the exact predicate script both return exit
-  128 on any HEAD). Hand-verified and opened directly: PR #93. 2026-08-31.
+  128 on any HEAD). Hand-verified and opened directly: PR #93, rebased
+  clean onto main after T8.3/T9.3 landed, all 4 CI checks green
+  (test/lint/k8s-smoke/helm-smoke), `MERGEABLE`/`CLEAN`. Left open for
+  the lead to merge rather than self-merging. 2026-08-31.
 
 ## Planned
 
