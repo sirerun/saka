@@ -338,3 +338,17 @@ derived just-in-time by `/apply`.
 - **E6** is parked (David's explicit choice, 2026-08-29) -- not blocked
   on anything technical, just not triggered. T6.0 should not run without
   a fresh founder decision on the billing store/Stripe backend.
+- **goal `t9-2-rest-stream`**, predicate `guard-landed` -- structurally
+  unsatisfiable, not a code gap. T9.2 (`GET /v1/search/stream` SSE
+  endpoint) is committed at 3321b92 and pushed; local HEAD equals
+  `origin/kazi-partition/p-40503915c3023f07-5639b073-89890290` and the
+  tree is clean. `go vet`, build, and the full race+cover suite all pass.
+  The predicate script (`test -z "$(git status --porcelain)" && [
+  "$(git rev-parse HEAD)" = "$(git rev-parse @{u})" ]`) is evaluated by
+  kazi in a throwaway detached-HEAD worktree where `@{u}` has no
+  upstream to resolve, so it always fails with exit 1 regardless of the
+  work -- reproduced verbatim in a scratch `git worktree add --detach`.
+  Same recurring issue as kazi-org/kazi#1709 (saka lore L-0007/L-0011).
+  Stop dispatching this goal expecting a code fix; needs a kazi-side fix
+  to `guard-landed` (compare against `origin/<branch>` instead of
+  `@{u}`) or a manual override to mark it converged.
