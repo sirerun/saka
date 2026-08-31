@@ -152,7 +152,7 @@ entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
 E7 without a manual wave gate.
 
-**E8 -- Images Vertical -- IN PROGRESS (T8.1/5).**
+**E8 -- Images Vertical -- IN PROGRESS (T8.1, T8.2/5).**
 docs/plans/E8-images-vertical.md.
 - T8.1 `types.Result` gains three optional, `omitempty` fields --
   `ThumbnailURL string`, `Width int`, `Height int` -- for a later images
@@ -168,6 +168,26 @@ docs/plans/E8-images-vertical.md.
   made. Hand-implemented instead (`go vet`/`go build`/`go test -race
   -cover` all green, `types` package stays at 100% coverage, plus two new
   tests -- zero-value omission and JSON round-trip). 2026-08-30. (PR #72)
+- T8.2 `provider/searxng/images.go`: an `ImagesProvider` embedding the
+  existing general-web `*Provider` to reuse its HTTP client and
+  base-URL config, self-registering as `"searxng-images"` (distinct
+  from `"searxng"` per ADR 003's addendum). Adds `categories=images` to
+  the SearXNG request and maps `img_src`->`Result.URL`,
+  `thumbnail_src`->`Result.ThumbnailURL`, and a `resolution` string
+  (e.g. `"1920x1080"`) into `Result.Width`/`Result.Height`, leaving both
+  at zero on a malformed or absent resolution without dropping the
+  result. Deviation: kazi's `--parallel` run hit the same L-0011
+  signature as T9.1/T7.4 -- all 9 capability predicates and every guard
+  but `landed` passed at iteration 3, no harness process running, no
+  commit anywhere in the object store. Skipped the escalation ladder
+  per lore and hand-implemented directly against the already-approved
+  predicate set (`prop-t8-2-searxng-images`) as the spec, plus a
+  table-driven `parseResolution` test and a malformed/missing-resolution
+  fixture case. `gofmt`/`go vet`/`go build` clean, `go test
+  ./provider/searxng/... -race` green (new and pre-existing tests both),
+  full non-cli suite green with `-race -cover`; `provider/searxng/
+  searxng.go`/`searxng_test.go` confirmed byte-for-byte unchanged.
+  2026-08-31. (PR #84, checkbox PR #86)
 
 **E7 -- News Vertical -- IN PROGRESS (T7.1-T7.3, T7.5 shipped; T7.4 in progress, T7.6 remaining).**
 docs/plans/E7-news-vertical.md.
@@ -266,20 +286,14 @@ docs/plans/E9-streaming-search.md.
 ## In progress
 
 - T7.4 (wiring `&vertical=news` into `GET /v1/search` and a `--vertical`
-  flag into `saka search`): claimed and dispatched 2026-08-30T23:33Z.
-  As of 2026-08-31T00:0xZ its kazi run shows the same L-0011 signature
-  as T9.1 above -- all 5 capability predicates and every guard but
-  `landed` pass, no harness process currently running. Coordinator is
-  addressing directly.
-- T8.2 (a `searxng-images` provider, `provider/searxng/images.go`,
-  querying the existing self-hosted SearXNG instance with
-  `categories=images`): claimed 2026-08-30T23:34Z, no run recorded yet
-  as of this update -- longer than this session's typical pace for a
-  task this size; worth a direct check.
+  flag into `saka search`): merged 2026-08-31 (PR #83), same L-0011
+  signature as T8.2 below, resolved the same way. Its own
+  docs/plans/E7-news-vertical.md checkbox and roadmap mark-done are a
+  separate bookkeeping step not yet landed as of this update.
 
 ## In flight (PRs open)
 
-- None currently open from T7.4/T8.2 -- check back once either produces one.
+- #86 docs(plan): mark T8.2 done (this update's own bookkeeping PR).
 
 ## Planned
 
@@ -288,13 +302,14 @@ derived just-in-time by `/apply`.
 
 - E7 News Vertical (6 tasks, fidelity: executable) --
   docs/plans/E7-news-vertical.md. T7.1, T7.2, T7.3, and T7.5 shipped (see
-  Shipped); T7.4 (deps: [T7.2, T7.3]) is claimed and in progress; T7.6
-  (deps: [T7.4, T7.5]) is claimable once T7.4 lands.
+  Shipped); T7.4 merged (PR #83, see In progress -- its own checkbox
+  mark-done is a separate pending bookkeeping step); T7.6
+  (deps: [T7.4, T7.5]) is now claimable.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
-  docs/plans/E8-images-vertical.md. T8.1 shipped (see Shipped). T8.2
-  (deps: [T7.2, T8.1]) is claimed and in progress (see In progress).
-  T8.3/T8.4 (deps: [T7.4, T7.5, T8.2] / [T7.5, T8.2]) wait on T8.2 plus
-  their T7.x counterparts; T8.5 (deps: [T8.3, T8.4]) after those.
+  docs/plans/E8-images-vertical.md. T8.1 and T8.2 shipped (see Shipped).
+  T8.3 (deps: [T7.4, T8.2]) and T8.4 (deps: [T7.5, T8.2]) are now
+  claimable -- both deps satisfied; T8.5 (deps: [T8.3, T8.4]) after
+  those.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
   docs/plans/E9-streaming-search.md. T9.1 shipped (see Shipped). T9.2/T9.3
   (deps: [T9.1]) are claimable now; T9.4 (deps: [T9.1, T7.2], both
