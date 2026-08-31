@@ -1,0 +1,58 @@
+namespace:
+  create: true
+  name: saka
+
+image:
+  repository: saka
+  tag: local
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: "1"
+    memory: 256Mi
+
+replicas: 1
+
+config: |
+  {
+    "providers": [
+      { "name": "searxng", "url": "http://searxng:8080", "rps": 5, "retries": 2 },
+      { "name": "duckduckgo", "rps": 1, "retries": 2 }
+    ],
+    "fetch": {
+      "rps": 2,
+      "cache_ttl_seconds": 3600,
+      "respect_robots": true,
+      "disk_cache": { "dir": "/home/saka/.cache/saka", "ttl_seconds": 86400 }
+    }
+  }
+
+searxng:
+  image:
+    repository: docker.io/searxng/searxng
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  settings: |
+    use_default_settings: true
+    server:
+      # Rotate in production (openssl rand -hex 32).
+      secret_key: "saka-dev-searxng-secret-change-me"
+      limiter: false
+      bind_address: "0.0.0.0"
+      port: 8080
+    search:
+      formats:
+        - html
+        - json

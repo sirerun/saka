@@ -1,0 +1,9 @@
+apiVersion: v2
+name: saka
+description: Free web search for Go and AI -- saka + SearXNG.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/sirerun/saka
+sources:
+  - https://github.com/sirerun/saka

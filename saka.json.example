@@ -1,0 +1,11 @@
+{
+  "providers": [
+    { "name": "searxng", "url": "http://localhost:8888", "rps": 5, "retries": 2 },
+    { "name": "duckduckgo", "rps": 1, "retries": 1 }
+  ],
+  "fetch": {
+    "rps": 2,
+    "cache_ttl_seconds": 3600,
+    "respect_robots": true
+  }
+}
