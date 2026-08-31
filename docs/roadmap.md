@@ -152,7 +152,7 @@ entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
 E7 without a manual wave gate.
 
-**E8 -- Images Vertical -- IN PROGRESS (T8.1/5).**
+**E8 -- Images Vertical -- IN PROGRESS (T8.1-T8.3/5).**
 docs/plans/E8-images-vertical.md.
 - T8.1 `types.Result` gains three optional, `omitempty` fields --
   `ThumbnailURL string`, `Width int`, `Height int` -- for a later images
@@ -168,6 +168,26 @@ docs/plans/E8-images-vertical.md.
   made. Hand-implemented instead (`go vet`/`go build`/`go test -race
   -cover` all green, `types` package stays at 100% coverage, plus two new
   tests -- zero-value omission and JSON round-trip). 2026-08-30. (PR #72)
+- T8.2 New `provider/searxng/images.go`: `ImagesProvider` embeds
+  `*Provider` to reuse its HTTP client/base-URL config, queries the same
+  self-hosted SearXNG instance with `categories=images`, and parses the
+  image-result JSON shape (`img_src` -> `Result.URL`, `thumbnail_src` ->
+  `Result.ThumbnailURL`, `resolution` string parsed into `Width`/`Height`,
+  a malformed or absent resolution leaving both at zero rather than
+  dropping the result). Self-registers as `"searxng-images"` -- a name
+  distinct from `"searxng"` so a `saka.json` entry stays unambiguous about
+  which vertical it serves; the provider itself does not fix its
+  vertical, that's `ProviderConfig.Vertical`'s job per ADR 003. 2026-08-31.
+  (PR #84)
+- T8.3 Proved the images vertical works end-to-end through the REST API:
+  new `server/images_test.go` builds a real `saka.Engine` against an
+  httptest-mocked SearXNG backend with both a general `searxng` provider
+  and `searxng-images` on vertical `"images"`, and asserts `GET
+  /v1/search?...&vertical=images` returns 200 with non-empty
+  `ThumbnailURL` results distinct from the same query with no vertical
+  param. Investigation confirmed T7.4's `&vertical=` REST plumbing was
+  already fully generic -- no production code changes needed, matching
+  the task's acc line. 2026-08-31. (PR #88)
 
 **E7 -- News Vertical -- IN PROGRESS (T7.1-T7.3, T7.5 shipped; T7.4 in progress, T7.6 remaining).**
 docs/plans/E7-news-vertical.md.
@@ -271,15 +291,9 @@ docs/plans/E9-streaming-search.md.
   as T9.1 above -- all 5 capability predicates and every guard but
   `landed` pass, no harness process currently running. Coordinator is
   addressing directly.
-- T8.2 (a `searxng-images` provider, `provider/searxng/images.go`,
-  querying the existing self-hosted SearXNG instance with
-  `categories=images`): claimed 2026-08-30T23:34Z, no run recorded yet
-  as of this update -- longer than this session's typical pace for a
-  task this size; worth a direct check.
-
 ## In flight (PRs open)
 
-- None currently open from T7.4/T8.2 -- check back once either produces one.
+- None currently open from E8 -- T8.2 and T8.3 both shipped (see Shipped).
 
 ## Planned
 
@@ -291,10 +305,9 @@ derived just-in-time by `/apply`.
   Shipped); T7.4 (deps: [T7.2, T7.3]) is claimed and in progress; T7.6
   (deps: [T7.4, T7.5]) is claimable once T7.4 lands.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
-  docs/plans/E8-images-vertical.md. T8.1 shipped (see Shipped). T8.2
-  (deps: [T7.2, T8.1]) is claimed and in progress (see In progress).
-  T8.3/T8.4 (deps: [T7.4, T7.5, T8.2] / [T7.5, T8.2]) wait on T8.2 plus
-  their T7.x counterparts; T8.5 (deps: [T8.3, T8.4]) after those.
+  docs/plans/E8-images-vertical.md. T8.1, T8.2, T8.3 shipped (see
+  Shipped). T8.4 (deps: [T7.5, T8.2], satisfied) is claimable now; T8.5
+  (deps: [T8.3, T8.4]) after T8.4 lands.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
   docs/plans/E9-streaming-search.md. T9.1 shipped (see Shipped). T9.2/T9.3
   (deps: [T9.1]) are claimable now; T9.4 (deps: [T9.1, T7.2], both
