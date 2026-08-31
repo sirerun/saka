@@ -260,7 +260,7 @@ is request/response, not SSE). T9.4 proves streaming composes with
 E7/E8's vertical mechanism. All three founder-greenlit epics (E7/E8/E9)
 are now at `fidelity: executable`; only E6 (parked) remains outline.
 
-**E9 -- Streaming Search Results -- IN PROGRESS (T9.1/5).**
+**E9 -- Streaming Search Results -- IN PROGRESS (T9.1-T9.2/5).**
 docs/plans/E9-streaming-search.md.
 - T9.1 `types.Searcher` gains `SearchStream(ctx, Query) (<-chan Result,
   <-chan *Results, <-chan error)`; `*saka.Engine` implements it by
@@ -282,6 +282,24 @@ docs/plans/E9-streaming-search.md.
   (PR #80; this checkbox and roadmap entry landed as a follow-up after
   the coordinator found the mark-done step had been skipped during a
   routine `/sitrep` pass, 2026-08-31T00:5xZ)
+- T9.2 new `GET /v1/search/stream` endpoint (server/http.go), mirroring
+  `/v1/stream`'s SSE conventions (`event: result`/`done`/`error`) and
+  `/v1/search`'s query params (q, n, vertical). Found and fixed a real
+  concurrency bug while implementing, not present in T9.1's code:
+  `SearchStream`'s item channel and its `doneCh`/`errCh` can all be
+  buffered-ready by the time the handler's first `select` runs (the
+  producer goroutine writes done/err then closes the item channel with
+  no synchronization forcing the reader to observe that order), so a
+  naive single `select` across all three raced and could emit
+  `event: done` before every `event: result` frame was flushed -- same
+  bug class as T1.2's `ExtractStream` fix above. Fixed with a two-phase
+  read: drain the item channel to completion first (a `select` that only
+  watches `results`/`errCh`/ctx), then read `doneCh`/`errCh` in a second
+  phase, since results closing guarantees whichever of the two the
+  producer wrote is already ready. New tests
+  (`TestHandleSearchStream{Results,MissingQ,Vertical,Error}`,
+  server/http_test.go) hold at `go test -race -count=50`. Full non-cli
+  suite green with `-race -cover`; `go vet` clean. 2026-08-30.
 
 ## In progress
 
@@ -309,9 +327,9 @@ derived just-in-time by `/apply`.
   Shipped). T8.4 (deps: [T7.5, T8.2], satisfied) is claimable now; T8.5
   (deps: [T8.3, T8.4]) after T8.4 lands.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
-  docs/plans/E9-streaming-search.md. T9.1 shipped (see Shipped). T9.2/T9.3
-  (deps: [T9.1]) are claimable now; T9.4 (deps: [T9.1, T7.2], both
-  satisfied) is claimable now too; T9.5 (deps: [T9.2, T9.3]) after those.
+  docs/plans/E9-streaming-search.md. T9.1/T9.2 shipped (see Shipped). T9.3
+  (deps: [T9.1]) is claimable now; T9.4 (deps: [T9.1, T7.2], both
+  satisfied) is claimable now too; T9.5 (deps: [T9.2, T9.3]) after T9.3.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 
