@@ -294,6 +294,14 @@ docs/plans/E9-streaming-search.md.
 ## In flight (PRs open)
 
 - None currently open from E8 -- T8.2 and T8.3 both shipped (see Shipped).
+- T9.4 (proves `SearchStream` routes the news vertical to the real
+  `gdelt` provider via an `httptest.Server`, not a fake): code and tests
+  complete and green (`go vet`, full non-cli suite `-race -cover`), but
+  kazi's `guard-landed` predicate is structurally unsatisfiable here --
+  same L-0011 signature as T9.1/T7.4/T8.2 (enforce worktree is a
+  detached-HEAD checkout with no `@{u}`, reproduced directly: `git
+  worktree add --detach` + the exact predicate script both return exit
+  128 on any HEAD). Hand-verified and opened directly: PR #93. 2026-08-31.
 
 ## Planned
 
@@ -311,7 +319,8 @@ derived just-in-time by `/apply`.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
   docs/plans/E9-streaming-search.md. T9.1 shipped (see Shipped). T9.2/T9.3
   (deps: [T9.1]) are claimable now; T9.4 (deps: [T9.1, T7.2], both
-  satisfied) is claimable now too; T9.5 (deps: [T9.2, T9.3]) after those.
+  satisfied) has a PR open (see In flight); T9.5 (deps: [T9.2, T9.3])
+  after those.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 
