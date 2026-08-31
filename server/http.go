@@ -83,7 +83,7 @@ func (s *Server) record(r *http.Request, field func(*KeyUsage)) {
 	}
 }
 
-// GET /v1/search?q=&n=&format=json|markdown
+// GET /v1/search?q=&n=&format=json|markdown&vertical=news
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -109,8 +109,9 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	if format == "" {
 		format = "json"
 	}
+	vertical := r.URL.Query().Get("vertical")
 
-	res, err := s.engine.Search(r.Context(), saka.Query{Text: q, MaxResults: n})
+	res, err := s.engine.Search(r.Context(), saka.Query{Text: q, MaxResults: n, Vertical: vertical})
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadGateway)
 		s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
