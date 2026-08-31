@@ -41,6 +41,7 @@ func NewWithOptions(engine saka.Searcher, opts Options) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/search", s.handleSearch)
+	mux.HandleFunc("/v1/search/stream", s.handleSearchStream)
 	mux.HandleFunc("/v1/fetch", s.handleFetch)
 	mux.HandleFunc("/v1/stream", s.handleStream)
 	if s.opts.Usage != nil {
@@ -134,6 +135,89 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, `{"error":"format must be json or markdown"}`, http.StatusBadRequest)
 		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+	}
+}
+
+// GET /v1/search/stream?q=&n=&vertical= — Server-Sent Events of search
+// results as they're produced: one "event: result" per Result, then a
+// single "event: done" with the final Results summary, or "event: error"
+// on failure. Mirrors handleStream's SSE conventions.
+func (s *Server) handleSearchStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		http.Error(w, `{"error":"missing q param"}`, http.StatusBadRequest)
+		s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+		return
+	}
+	n := 10
+	if ns := r.URL.Query().Get("n"); ns != "" {
+		v, err := strconv.Atoi(ns)
+		if err != nil || v <= 0 {
+			http.Error(w, `{"error":"invalid n param"}`, http.StatusBadRequest)
+			s.record(r, func(ku *KeyUsage) { ku.Errors4xx++ })
+			return
+		}
+		n = v
+	}
+	vertical := r.URL.Query().Get("vertical")
+
+	fl, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	s.record(r, func(ku *KeyUsage) { ku.Streams++ })
+
+	results, doneCh, errCh := s.engine.SearchStream(r.Context(), saka.Query{Text: q, MaxResults: n, Vertical: vertical})
+	// doneCh is only sent to after results is fully drained and closed
+	// (types.Searcher's SearchStream contract), so results must be drained
+	// to completion before doneCh is read — selecting on both at once would
+	// race whichever channel happens to be buffered-ready first and could
+	// emit "done" before every "result" frame was written.
+draining:
+	for {
+		select {
+		case res, ok := <-results:
+			if !ok {
+				break draining
+			}
+			b, _ := json.Marshal(res)
+			_, _ = fmt.Fprintf(w, "event: result\ndata: %s\n\n", b)
+			fl.Flush()
+		case err := <-errCh:
+			if err != nil {
+				_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
+				fl.Flush()
+				s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
+			}
+			return
+		case <-r.Context().Done():
+			return
+		}
+	}
+
+	// results has closed, so whichever of doneCh/errCh SearchStream sent to
+	// (mutually exclusive, per the contract above) is already buffered-ready.
+	select {
+	case done := <-doneCh:
+		b, _ := json.Marshal(done)
+		_, _ = fmt.Fprintf(w, "event: done\ndata: %s\n\n", b)
+		fl.Flush()
+	case err := <-errCh:
+		if err != nil {
+			_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
+			fl.Flush()
+			s.record(r, func(ku *KeyUsage) { ku.Errors5xx++ })
+		}
+	case <-r.Context().Done():
 	}
 }
 
