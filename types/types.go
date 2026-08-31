@@ -109,6 +109,7 @@ type Searcher interface {
 	Search(ctx context.Context, q Query) (*Results, error)
 	Fetch(ctx context.Context, url string) (*Page, error)
 	FetchStream(ctx context.Context, url string) (<-chan Chunk, <-chan *Page, <-chan error)
+	SearchStream(ctx context.Context, q Query) (<-chan Result, <-chan *Results, <-chan error)
 }
 
 // Provider is implemented by each search backend.

@@ -28,6 +28,18 @@ func (fakeEngine) FetchStream(ctx context.Context, url string) (<-chan saka.Chun
 	errc := make(chan error, 1)
 	return ch, done, errc
 }
+func (fakeEngine) SearchStream(ctx context.Context, q saka.Query) (<-chan saka.Result, <-chan *saka.Results, <-chan error) {
+	res, _ := fakeEngine{}.Search(ctx, q)
+	ch := make(chan saka.Result, len(res.Results))
+	for _, r := range res.Results {
+		ch <- r
+	}
+	close(ch)
+	done := make(chan *saka.Results, 1)
+	done <- res
+	errc := make(chan error, 1)
+	return ch, done, errc
+}
 
 func TestMCPRoundTrip(t *testing.T) {
 	s := NewMCP(fakeEngine{})

@@ -23,6 +23,9 @@ func (fakeSearcher) Fetch(_ context.Context, u string) (*saka.Page, error) {
 func (fakeSearcher) FetchStream(ctx context.Context, u string) (<-chan saka.Chunk, <-chan *saka.Page, <-chan error) {
 	return nil, nil, nil
 }
+func (fakeSearcher) SearchStream(ctx context.Context, q saka.Query) (<-chan saka.Result, <-chan *saka.Results, <-chan error) {
+	return nil, nil, nil
+}
 
 func TestExecuteToolSearch(t *testing.T) {
 	out, err := ExecuteTool(context.Background(), fakeSearcher{}, "web_search",
@@ -92,6 +95,9 @@ func (c capturingSearcher) Fetch(_ context.Context, u string) (*saka.Page, error
 	return &saka.Page{URL: u}, nil
 }
 func (c capturingSearcher) FetchStream(_ context.Context, _ string) (<-chan saka.Chunk, <-chan *saka.Page, <-chan error) {
+	return nil, nil, nil
+}
+func (c capturingSearcher) SearchStream(_ context.Context, _ saka.Query) (<-chan saka.Result, <-chan *saka.Results, <-chan error) {
 	return nil, nil, nil
 }
 

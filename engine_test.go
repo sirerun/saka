@@ -4,7 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+
+	"github.com/sirerun/saka/types"
 )
 
 func TestHomeDir(t *testing.T) {
@@ -164,4 +167,70 @@ func TestEngineMethods(t *testing.T) {
 			t.Fatal("expected context deadline error")
 		}
 	})
+}
+
+type fakeSearchStreamProvider struct{}
+
+func (fakeSearchStreamProvider) Name() string { return "fake-searchstream" }
+
+func (fakeSearchStreamProvider) Search(_ context.Context, _ types.Query) ([]types.Result, error) {
+	return []types.Result{
+		{Title: "one", URL: "https://one.example", Position: 1},
+		{Title: "two", URL: "https://two.example", Position: 2},
+		{Title: "three", URL: "https://three.example", Position: 3},
+	}, nil
+}
+
+func TestEngineSearchStream(t *testing.T) {
+	if err := types.Register("fake-searchstream", func(types.ProviderConfig) (types.Provider, error) {
+		return fakeSearchStreamProvider{}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, err := New(Config{
+		Providers: []ProviderConfig{{Name: "fake-searchstream", RPS: 1}},
+		Fetch:     FetchConfig{RPS: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	q := Query{Text: "q"}
+
+	want, err := e.Search(ctx, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	itemCh, doneCh, errCh := e.SearchStream(ctx, q)
+
+	var got []Result
+	for r := range itemCh {
+		got = append(got, r)
+	}
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("unexpected error on error channel: %v", err)
+	default:
+	}
+
+	done := <-doneCh
+	if done == nil {
+		t.Fatal("expected non-nil *Results on done channel")
+	}
+	if !reflect.DeepEqual(got, want.Results) {
+		t.Errorf("streamed results = %+v, want %+v", got, want.Results)
+	}
+	if done.Provider != want.Provider {
+		t.Errorf("done.Provider = %q, want %q", done.Provider, want.Provider)
+	}
+	if done.Query != want.Query {
+		t.Errorf("done.Query = %q, want %q", done.Query, want.Query)
+	}
+	if done.TookMs < 0 {
+		t.Errorf("done.TookMs = %d, want >= 0", done.TookMs)
+	}
 }
