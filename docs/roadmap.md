@@ -152,7 +152,7 @@ entry stays unambiguous about which vertical it belongs to). Each E8
 task `deps:` on its matching T7.x task, so the pool sequences E8 behind
 E7 without a manual wave gate.
 
-**E8 -- Images Vertical -- IN PROGRESS (T8.1-T8.3/5).**
+**E8 -- Images Vertical -- IN PROGRESS (T8.1-T8.4/5).**
 docs/plans/E8-images-vertical.md.
 - T8.1 `types.Result` gains three optional, `omitempty` fields --
   `ThumbnailURL string`, `Width int`, `Height int` -- for a later images
@@ -195,8 +195,19 @@ docs/plans/E8-images-vertical.md.
   param. Investigation confirmed T7.4's `&vertical=` REST plumbing was
   already fully generic -- no production code changes needed, matching
   the task's acc line. 2026-08-31. (PR #88)
+- T8.4 Proved the images vertical works end-to-end through the MCP
+  server and AI tool schemas: a new `tools` test drives
+  `tools.ExecuteTool(ctx, engine, "web_search", ...)` with
+  `"vertical":"images"` against a real `saka.Engine` configured with
+  `searxng-images`, asserting `Results.Provider == "searxng-images"`
+  and a non-empty `ThumbnailURL`. No production code changes needed --
+  T7.5's generic `"vertical"` tool schema param and T8.2's provider were
+  already sufficient. Avoided re-triggering the `"gdelt"`
+  double-registration collision (docs/lore.md, T7.4's entry above) by
+  not fake-registering `"searxng-images"` under its real name either.
+  2026-08-31. (PR #89)
 
-**E7 -- News Vertical -- IN PROGRESS (T7.1-T7.5 shipped; T7.6 remaining).**
+**E7 -- News Vertical -- COMPLETE (T7.1-T7.6).**
 docs/plans/E7-news-vertical.md.
 - T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
   `WithDefaults()` deliberately left untouched. Ran via the kazi lane
@@ -278,6 +289,13 @@ docs/plans/E7-news-vertical.md.
   build`/`go vet`/`gofmt -l`/`golangci-lint` (CI-pinned v2.13.2) clean;
   full non-cli suite and `go test ./...` (incl. cli/) green with
   `-race -cover`. 2026-08-30. (PR #83)
+- T7.6 Documented the news vertical: `docs/SPEC.md` gains section 3.3.1
+  ("Search verticals") describing the `Query.Vertical` mechanism, the
+  `gdelt` provider, the `&vertical=` REST param, and the `--vertical`
+  CLI flag; `saka.json.example` gains a commented-out
+  `_example_news_vertical_provider` entry showing the `"vertical":
+  "news"` config shape. Hand-implemented directly (pure docs, no kazi
+  lane). 2026-08-31. (PR #90)
 
 **T9.0 (2026-08-30):** expanded E9 (Streaming Search Results) to
 executable fidelity, 5 tasks (T9.1-T9.5), docs/plans/E9-streaming-search.md.
@@ -295,7 +313,7 @@ is request/response, not SSE). T9.4 proves streaming composes with
 E7/E8's vertical mechanism. All three founder-greenlit epics (E7/E8/E9)
 are now at `fidelity: executable`; only E6 (parked) remains outline.
 
-**E9 -- Streaming Search Results -- IN PROGRESS (T9.1, T9.3/5).**
+**E9 -- Streaming Search Results -- IN PROGRESS (T9.1, T9.3, T9.4/5).**
 docs/plans/E9-streaming-search.md.
 - T9.1 `types.Searcher` gains `SearchStream(ctx, Query) (<-chan Result,
   <-chan *Results, <-chan error)`; `*saka.Engine` implements it by
@@ -332,6 +350,15 @@ docs/plans/E9-streaming-search.md.
   banner. `go build`/`go vet`/`go test ./... -race -cover` green;
   golangci-lint pinned to v2.13.2 (docs/lore.md L-0003) clean.
   2026-08-30. (PR #91)
+- T9.4 Proved `SearchStream` composes with the vertical mechanism: a new
+  root-package test configures the real `gdelt` provider against an
+  `httptest.Server` fixture under `vertical: "news"` and asserts
+  `SearchStream(ctx, Query{Vertical: "news", ...})`'s done-channel
+  `*Results.Provider == "gdelt"`, proving the stream draws from the news
+  chain, not the general chain. Kazi's `--parallel` run hit the same
+  L-0011 signature as T9.1/T7.4/T8.2 (all real predicates green, only
+  `guard-landed` red, no recoverable commit); hand-implemented directly
+  against the approved predicate set instead. 2026-08-31. (PR #93)
 
 ## In progress
 
