@@ -189,7 +189,7 @@ docs/plans/E8-images-vertical.md.
   already fully generic -- no production code changes needed, matching
   the task's acc line. 2026-08-31. (PR #88)
 
-**E7 -- News Vertical -- IN PROGRESS (T7.1-T7.3, T7.5 shipped; T7.4 in progress, T7.6 remaining).**
+**E7 -- News Vertical -- IN PROGRESS (T7.1-T7.5 shipped; T7.6 remaining).**
 docs/plans/E7-news-vertical.md.
 - T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
   `WithDefaults()` deliberately left untouched. Ran via the kazi lane
@@ -243,6 +243,34 @@ docs/plans/E7-news-vertical.md.
   merged the actual converged commit directly (independently reviewed
   the diff; CI green: test/lint/k8s-smoke/helm-smoke) rather than
   chasing the false-negative through a cherry-pick. 2026-08-30. (PR #74)
+- T7.4 `GET /v1/search` gains an optional `&vertical=news` query param
+  (`server/http.go`) threaded into `Query.Vertical`; `saka search` gains
+  a matching `--vertical` flag (`cli/saka/main.go`). Also fixes a
+  discovered gap: `provider/gdelt` self-registers via `init()` but was
+  never blank-imported into the root `saka` package, so no real binary
+  could ever load a configured `"gdelt"` provider -- added
+  `_ "github.com/sirerun/saka/provider/gdelt"` to `saka.go`'s existing
+  import block. Ran via the kazi lane (claude-sonnet-5); the run's own
+  `landed` predicate went `stuck` with the same signature as T7.1/T7.5/T9.1
+  (docs/lore.md L-0011) -- all 5 capability predicates and every guard but
+  `landed` passed, no harness process left running. Found the real commits
+  on an orphaned `kazi-partition/*` branch (unlike T9.1, a recoverable
+  commit did exist this time) and cherry-picked the clean ones (the
+  `saka.go` import, the CLI flag) directly; rewrote the REST-layer test
+  rather than reusing the kazi run's version, because that version proved
+  vertical routing by making the `fakeEngine` mock vertical-aware instead
+  of exercising a real `saka.Engine`/`saka.Config` -- the acceptance
+  criterion and the verification gate both require "no stub/mock code"
+  against a real engine. The rebase onto latest `origin/main` needed to
+  recover those commits surfaced a second real bug: `tools/tools_test.go`
+  (T7.5) registers its own fake provider under the literal name `"gdelt"`
+  for a no-network unit test, which now collided with the real
+  registration this task adds -- `types.Register("gdelt", ...)` panicked
+  with "already registered" in CI. Fixed by renaming the test fake to
+  `"test-gdelt-fake"` (T7.5's test assertions unaffected). `go
+  build`/`go vet`/`gofmt -l`/`golangci-lint` (CI-pinned v2.13.2) clean;
+  full non-cli suite and `go test ./...` (incl. cli/) green with
+  `-race -cover`. 2026-08-30. (PR #83)
 
 **T9.0 (2026-08-30):** expanded E9 (Streaming Search Results) to
 executable fidelity, 5 tasks (T9.1-T9.5), docs/plans/E9-streaming-search.md.
@@ -285,45 +313,30 @@ docs/plans/E9-streaming-search.md.
 
 ## In progress
 
-- T7.4 (wiring `&vertical=news` into `GET /v1/search` and a `--vertical`
-  flag into `saka search`): claimed and dispatched 2026-08-30T23:33Z.
-  As of 2026-08-31T00:0xZ its kazi run shows the same L-0011 signature
-  as T9.1 above -- all 5 capability predicates and every guard but
-  `landed` pass, no harness process currently running. Coordinator is
-  addressing directly.
+- T9.2 (new `GET /v1/search/stream` SSE endpoint, server/http.go, mirroring
+  the existing `/v1/stream` conventions): claimed and converging as of
+  2026-08-31T02:xx.
+
 ## In flight (PRs open)
 
-- None currently open from E8 -- T8.2 and T8.3 both shipped (see Shipped).
-- T9.4 (proves `SearchStream` routes the news vertical to the real
-  `gdelt` provider via an `httptest.Server`, not a fake): code and tests
-  complete and green (`go vet`, full non-cli suite `-race -cover`), but
-  kazi's `guard-landed` predicate is structurally unsatisfiable here --
-  same L-0011 signature as T9.1/T7.4/T8.2 (enforce worktree is a
-  detached-HEAD checkout with no `@{u}`, reproduced directly: `git
-  worktree add --detach` + the exact predicate script both return exit
-  128 on any HEAD). Hand-verified and opened directly: PR #93, rebased
-  clean onto main after T8.3/T9.3 landed, all 4 CI checks green
-  (test/lint/k8s-smoke/helm-smoke), `MERGEABLE`/`CLEAN`. Left open for
-  the lead to merge rather than self-merging. 2026-08-31.
+- None currently open -- T7.4, T8.2, T7.6, T8.4, T9.3, and T9.4 all
+  merged (see Shipped); their bookkeeping (mark-done/roadmap PRs) is
+  being landed by the coordinator in this same pass.
 
 ## Planned
 
 See `docs/plan.md` for full detail; `acc:` lines are kazi predicates,
 derived just-in-time by `/apply`.
 
-- E7 News Vertical (6 tasks, fidelity: executable) --
-  docs/plans/E7-news-vertical.md. T7.1, T7.2, T7.3, and T7.5 shipped (see
-  Shipped); T7.4 (deps: [T7.2, T7.3]) is claimed and in progress; T7.6
-  (deps: [T7.4, T7.5]) is claimable once T7.4 lands.
+- E7 News Vertical (6 tasks, fidelity: executable) -- COMPLETE. All of
+  T7.1-T7.6 merged (see Shipped); docs/plans/E7-news-vertical.md.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
-  docs/plans/E8-images-vertical.md. T8.1, T8.2, T8.3 shipped (see
-  Shipped). T8.4 (deps: [T7.5, T8.2], satisfied) is claimable now; T8.5
-  (deps: [T8.3, T8.4]) after T8.4 lands.
+  docs/plans/E8-images-vertical.md. T8.1-T8.4 shipped (see Shipped).
+  T8.5 (deps: [T8.3, T8.4], both satisfied) is claimable now.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
-  docs/plans/E9-streaming-search.md. T9.1 shipped (see Shipped). T9.2/T9.3
-  (deps: [T9.1]) are claimable now; T9.4 (deps: [T9.1, T7.2], both
-  satisfied) has a PR open (see In flight); T9.5 (deps: [T9.2, T9.3])
-  after those.
+  docs/plans/E9-streaming-search.md. T9.1, T9.3, and T9.4 shipped (see
+  Shipped); T9.2 (deps: [T9.1]) is claimed and converging (see In
+  progress); T9.5 (deps: [T9.2, T9.3]) is claimable once T9.2 lands.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 
