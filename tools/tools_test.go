@@ -112,10 +112,13 @@ func TestExecuteToolPassesVerticalThroughToQuery(t *testing.T) {
 	}
 }
 
-// fakeVerticalProvider is a types.Provider stand-in registered under the
-// real "gdelt" name so TestExecuteToolRoutesNewsVerticalToGdeltProvider can
+// fakeVerticalProvider is a types.Provider stand-in registered under a
+// test-only name so TestExecuteToolRoutesNewsVerticalToGdeltProvider can
 // exercise the full ExecuteTool -> Engine -> chain -> provider path without
-// hitting GDELT's live API.
+// hitting GDELT's live API. It cannot be registered under the real "gdelt"
+// name: saka.go blank-imports provider/gdelt (T7.4), which self-registers
+// "gdelt" for real in this same test binary, so a second Register("gdelt",
+// ...) here would panic with "already registered".
 type fakeVerticalProvider struct {
 	name  string
 	title string
@@ -127,8 +130,8 @@ func (f fakeVerticalProvider) Search(_ context.Context, _ types.Query) ([]types.
 }
 
 func init() {
-	if err := types.Register("gdelt", func(types.ProviderConfig) (types.Provider, error) {
-		return fakeVerticalProvider{name: "gdelt", title: "GDELT-NEWS-MARKER"}, nil
+	if err := types.Register("test-gdelt-fake", func(types.ProviderConfig) (types.Provider, error) {
+		return fakeVerticalProvider{name: "test-gdelt-fake", title: "GDELT-NEWS-MARKER"}, nil
 	}); err != nil {
 		panic(err)
 	}
@@ -143,7 +146,7 @@ func TestExecuteToolRoutesNewsVerticalToGdeltProvider(t *testing.T) {
 	engine, err := saka.New(saka.Config{
 		Providers: []saka.ProviderConfig{
 			{Name: "test-general-web", RPS: 1},
-			{Name: "gdelt", RPS: 1, Vertical: "news"},
+			{Name: "test-gdelt-fake", RPS: 1, Vertical: "news"},
 		},
 		Fetch: saka.FetchConfig{RPS: 1},
 	})
