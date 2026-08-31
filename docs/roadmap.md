@@ -177,8 +177,15 @@ docs/plans/E8-images-vertical.md.
   dropping the result). Self-registers as `"searxng-images"` -- a name
   distinct from `"searxng"` so a `saka.json` entry stays unambiguous about
   which vertical it serves; the provider itself does not fix its
-  vertical, that's `ProviderConfig.Vertical`'s job per ADR 003. 2026-08-31.
-  (PR #84)
+  vertical, that's `ProviderConfig.Vertical`'s job per ADR 003. Deviation:
+  kazi's `--parallel` run hit the same L-0011 signature as T9.1/T7.4 --
+  all 9 capability predicates and every guard but `landed` passed at
+  iteration 3, no harness process running, no commit anywhere in the
+  object store. Skipped the escalation ladder per lore and
+  hand-implemented directly against the already-approved predicate set
+  (`prop-t8-2-searxng-images`) as the spec; `provider/searxng/searxng.go`/
+  `searxng_test.go` confirmed byte-for-byte unchanged. 2026-08-31.
+  (PR #84, checkbox PR #86)
 - T8.3 Proved the images vertical works end-to-end through the REST API:
   new `server/images_test.go` builds a real `saka.Engine` against an
   httptest-mocked SearXNG backend with both a general `searxng` provider
