@@ -169,7 +169,7 @@ docs/plans/E8-images-vertical.md.
   -cover` all green, `types` package stays at 100% coverage, plus two new
   tests -- zero-value omission and JSON round-trip). 2026-08-30. (PR #72)
 
-**E7 -- News Vertical -- IN PROGRESS (T7.1, T7.3/6).**
+**E7 -- News Vertical -- IN PROGRESS (T7.1/3, T7.5 shipped; T7.4/6 open).**
 docs/plans/E7-news-vertical.md.
 - T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
   `WithDefaults()` deliberately left untouched. Ran via the kazi lane
@@ -192,6 +192,20 @@ docs/plans/E7-news-vertical.md.
   pass, `gofmt -l`, the CI-pinned `golangci-lint`, and the full
   race+cover suite) before opening the PR. 2026-08-30. (PR #66, checkbox
   PR #67)
+- T7.5 `tools/tools.go`'s `web_search` JSON schema and `searchArgs` gain
+  an optional `"vertical"` string, threaded through to `Query.Vertical`
+  in `ExecuteTool`; `server/mcp.go` needed no code change since it
+  already delegates to `tools.SearchSchema()`/`tools.ExecuteTool`
+  verbatim. New tests prove vertical=news routes to a provider
+  registered as `"gdelt"` while an unset vertical stays on the general
+  chain. Ran via the kazi lane (claude-sonnet-5); the run's own `landed`
+  predicate reported `stuck` for the same reason as T7.1's (`--parallel`
+  lands work on a scheduler-owned `kazi-partition/p-<hash>` branch, not
+  `task/<goal-id>`) even though every capability predicate had converged
+  and the code was already correct and pushed. The team lead found and
+  merged the actual converged commit directly (independently reviewed
+  the diff; CI green: test/lint/k8s-smoke/helm-smoke) rather than
+  chasing the false-negative through a cherry-pick. 2026-08-30. (PR #74)
 
 **T9.0 (2026-08-30):** expanded E9 (Streaming Search Results) to
 executable fidelity, 5 tasks (T9.1-T9.5), docs/plans/E9-streaming-search.md.
@@ -229,9 +243,9 @@ See `docs/plan.md` for full detail; `acc:` lines are kazi predicates,
 derived just-in-time by `/apply`.
 
 - E7 News Vertical (6 tasks, fidelity: executable) --
-  docs/plans/E7-news-vertical.md. T7.1 and T7.3 shipped (see Shipped);
-  T7.2 (deps: [T7.1]) is claimable now; T7.4/T7.5 (deps: [T7.2, T7.3])
-  are claimable once T7.2 lands; T7.6 (deps: [T7.4, T7.5]) after those.
+  docs/plans/E7-news-vertical.md. T7.1, T7.2, T7.3, and T7.5 shipped (see
+  Shipped); T7.4 (deps: [T7.2, T7.3]) is claimed and in progress; T7.6
+  (deps: [T7.4, T7.5]) is claimable once T7.4 lands.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
   docs/plans/E8-images-vertical.md. T8.1 shipped (see Shipped). T8.2
   (deps: [T7.2, T8.1]) is claimable now -- `feat(saka): route Search
