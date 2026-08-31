@@ -105,6 +105,38 @@ func TestSearchSiteFilter(t *testing.T) {
 	}
 }
 
+// TestNewFromConfigHonorsURL asserts that a ProviderConfig.URL (e.g. so
+// tests or a self-hosted mirror can point gdelt at a non-default endpoint)
+// overrides the built-in docEndpoint, and that an empty URL falls back to
+// the real GDELT API.
+func TestNewFromConfigHonorsURL(t *testing.T) {
+	var gotHit bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHit = true
+		_, _ = w.Write([]byte(`{"articles":[]}`))
+	}))
+	defer srv.Close()
+
+	p, err := newFromConfig(types.ProviderConfig{Name: "gdelt", URL: srv.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Search(context.Background(), types.Query{Text: "q", MaxResults: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if !gotHit {
+		t.Fatal("expected newFromConfig to route Search through the configured URL")
+	}
+
+	defaultProvider, err := newFromConfig(types.ProviderConfig{Name: "gdelt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := defaultProvider.(*Provider).endpoint; got != docEndpoint {
+		t.Errorf("endpoint = %q, want default %q", got, docEndpoint)
+	}
+}
+
 func TestSearchMaxResultsCap(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"articles":[

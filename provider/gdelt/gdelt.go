@@ -64,7 +64,10 @@ func init() {
 	}
 }
 
-func newFromConfig(_ types.ProviderConfig) (types.Provider, error) {
+func newFromConfig(cfg types.ProviderConfig) (types.Provider, error) {
+	if cfg.URL != "" {
+		return newWithEndpoint(cfg.URL), nil
+	}
 	return New(), nil
 }
 
