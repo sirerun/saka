@@ -169,7 +169,7 @@ docs/plans/E8-images-vertical.md.
   -cover` all green, `types` package stays at 100% coverage, plus two new
   tests -- zero-value omission and JSON round-trip). 2026-08-30. (PR #72)
 
-**E7 -- News Vertical -- IN PROGRESS (T7.1/3, T7.5 shipped; T7.4/6 open).**
+**E7 -- News Vertical -- IN PROGRESS (T7.1-T7.3, T7.5 shipped; T7.4 in progress, T7.6 remaining).**
 docs/plans/E7-news-vertical.md.
 - T7.1 `Vertical string` added to `types.Query`/`types.ProviderConfig`;
   `WithDefaults()` deliberately left untouched. Ran via the kazi lane
@@ -180,6 +180,23 @@ docs/plans/E7-news-vertical.md.
   the real commit onto the task branch, added missing test coverage, and
   re-ran the full validation ladder before shipping. 2026-08-30. (PR #62,
   checkbox PR #63)
+- T7.2 `saka.Engine` now holds one `chain.Chain` per vertical
+  (`map[string]*chain.Chain`, `""` = general web) per
+  docs/adr/003-search-verticals.md -- `New()` groups `cfg.Providers` by
+  `Vertical` before calling `chain.New` once per group; `Search()`
+  resolves `q.WithDefaults().Vertical` against the map and returns `saka:
+  no provider configured for vertical %q` (no network I/O) instead of
+  falling back to `ErrNoResults`; `Config.Validate` now rejects a
+  provider `Name` reused across two different verticals, naming both in
+  the error, while a same-vertical duplicate keeps its original message.
+  Ran via the kazi lane (claude-sonnet-5); converged cleanly (iteration
+  2, all 10 predicates pass) on a scheduler-owned `kazi-partition/p-<hash>`
+  branch (expected under `--parallel`). Independently verified before
+  shipping: cherry-picked the real commit onto `task/t7-2-engine-verticals`,
+  confirmed the 4 pre-existing root-package test files are byte-for-byte
+  unchanged from `origin/main`, and re-ran `go build`/`go vet`/`gofmt
+  -l`/`go test ./... -race -cover` (all green, root package 94%
+  coverage) plus both acceptance checks directly. 2026-08-30. (PR #71)
 - T7.3 `provider/gdelt` -- new `types.Provider` calling GDELT's DOC 2.0
   JSON API (no API key), self-registered as `"gdelt"`, fixed to vertical
   `"news"` (doc comment warns against wiring it into the general chain,
