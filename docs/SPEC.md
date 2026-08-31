@@ -1,6 +1,6 @@
 # Saka Specification
 
-Version: 1.2 · License: Apache-2.0 · Go: 1.22+ · External deps: `golang.org/x/net` only
+Version: 1.3 · License: Apache-2.0 · Go: 1.22+ · External deps: `golang.org/x/net` only
 
 ---
 
@@ -62,6 +62,8 @@ type Searcher interface {
     Fetch(ctx context.Context, url string) (*Page, error)
     FetchStream(ctx context.Context, url string) (
         <-chan Chunk, <-chan *Page, <-chan error)
+    SearchStream(ctx context.Context, q Query) (
+        <-chan Result, <-chan *Results, <-chan error)
 }
 
 type Query struct {
@@ -70,11 +72,15 @@ type Query struct {
     Region     string // "us-en"
     SafeSearch bool
     Site       string
+    Vertical   string // "" = general web; e.g. "news" (§3.3.1)
 }
 
 type Result struct {
     Title, URL, Snippet, Source string
     Position int
+    // set only by verticals that return media results (e.g. images)
+    ThumbnailURL string
+    Width, Height int
 }
 
 type Results struct {
@@ -117,6 +123,43 @@ Adding a provider = implement `Provider`, then call `types.Register(name,
 factory)` from an `init()` in the provider's own package. `Config.Validate`
 and engine construction resolve providers via `types.Lookup`/
 `types.Registered` against this registry.
+
+### 3.3.1 Search verticals
+
+A vertical routes a search to a distinct kind of result (news, images) that
+never competes or substitutes for general web results inside one fallback
+chain. See `docs/adr/003-search-verticals.md` for the design rationale.
+
+- `Query.Vertical` selects the vertical; empty (the zero value) means
+  general web search — the exact behavior every existing caller already
+  gets. `Query.WithDefaults()` never sets a default vertical.
+- `ProviderConfig.Vertical` assigns a configured provider entry to a
+  vertical (`"vertical": "news"` in `saka.json`); empty means the general
+  chain. `Engine.New` groups `cfg.Providers` by `Vertical` and builds one
+  `chain.Chain` per group (`""` is the general-web key, matching today's
+  only chain) — a vertical's providers still get that chain's fallback,
+  rate-limiting, and circuit-breaker behavior among themselves, they just
+  never compete with a different vertical's providers.
+- `Engine.Search` resolves `q.WithDefaults().Vertical` against the
+  configured chains and returns `saka: no provider configured for vertical
+  %q` when nothing is configured for it, rather than silently falling back
+  to general web results or a bare `ErrNoResults`.
+- The requested vertical is spelled the same way on every call site:
+  - REST: `GET /v1/search?q=&vertical=news`
+  - CLI: `saka search "query" --vertical news`
+  - MCP / AI tool schemas: an optional `"vertical"` string parameter on
+    `web_search`, dispatched by `tools.ExecuteTool` to `Query.Vertical`
+- `gdelt` (`provider/gdelt`) is the first vertical provider: it queries
+  GDELT's DOC 2.0 API (`https://api.gdeltproject.org/api/v2/doc/doc`,
+  `mode=artlist&format=json`) for news articles, needs no API key or
+  registration, and self-registers as `"gdelt"`. The provider has no
+  built-in notion of "news" — a `saka.json` entry must set
+  `"vertical": "news"` itself, or the provider lands in the general chain
+  and general web search results become nondeterministic depending on
+  which provider answers first. Configure its `rps` conservatively (≤ 1);
+  GDELT is a shared public resource with no auth to throttle by.
+  `Result.Snippet` is always empty for `gdelt` hits — GDELT's `artlist`
+  mode doesn't return an excerpt.
 
 ### 3.4 Chain behavior
 
@@ -171,7 +214,7 @@ and engine construction resolve providers via `types.Lookup`/
 ## 5. CLI
 
 ```
-saka search "query" [-n 10] [--format table|json|markdown] [--site d] [--config f]
+saka search "query" [-n 10] [--format table|json|markdown] [--site d] [--vertical news] [--config f]
 saka fetch <url> [--format text|json|markdown] [--no-cache]
 saka serve [--addr :8080] [--mcp] [--keys f.json] [--keys-pub f.pub]
 saka keys [--tier free|standard|pro] [--n 1] [--exp-days 365] [--priv f]
@@ -181,7 +224,7 @@ saka keys [--tier free|standard|pro] [--n 1] [--exp-days 365] [--priv f]
 
 | Endpoint | Description |
 |---|---|
-| `GET /v1/search?q=&n=&format=json\|markdown` | Search |
+| `GET /v1/search?q=&n=&format=json\|markdown&vertical=` | Search (optional vertical, e.g. `news`; see §3.3.1) |
 | `GET /v1/fetch?url=&format=text\|json\|markdown` | Fetch + extract |
 | `GET /v1/stream?url=` | SSE: `event: chunk\|done\|error` |
 | `GET /v1/usage` | Per-key usage (admin key = full dump) |
@@ -196,7 +239,7 @@ Keyless mode (self-hosted) has no auth.
 - Transport: line-delimited JSON-RPC 2.0 over stdio; protocol
   `2024-11-05`; methods `initialize`, `notifications/initialized`,
   `tools/list`, `tools/call`.
-- Tools: `web_search` (query, max_results, site), `fetch_page` (url).
+- Tools: `web_search` (query, max_results, site, vertical), `fetch_page` (url).
 - Tool errors are returned in-result with `isError: true` per spec.
 
 ## 8. AI Tool Schemas
@@ -271,4 +314,5 @@ Keyless mode (self-hosted) has no auth.
 | 1.0 | Core: providers, chain, fetch/extract/stream, CLI, REST, MCP, tools, tests, release pipeline |
 | 1.1 | Startpage, auth middleware, disk cache, k8s stack (saka + SearXNG) |
 | 1.2 | Signed keys, usage metering, `saka keys`, CI/CD, dependabot |
-| Future | `/v1/usage` persistence backend, news/images verticals, `Page.Chunks` over SSE search, additional providers via plugin convention |
+| 1.3 | Search verticals mechanism (`Query.Vertical`/`ProviderConfig.Vertical`, per-vertical chains); news vertical via `gdelt` |
+| Future | `/v1/usage` persistence backend, images vertical, `Page.Chunks` over SSE search, additional providers via plugin convention |
