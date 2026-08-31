@@ -28,22 +28,26 @@ func (p *fakeVerticalProvider) Search(_ context.Context, _ saka.Query) ([]saka.R
 }
 
 func init() {
-	_ = saka.Register("fake-general", func(_ saka.ProviderConfig) (saka.Provider, error) {
+	if err := saka.Register("fake-general", func(_ saka.ProviderConfig) (saka.Provider, error) {
 		return &fakeVerticalProvider{
 			name: "fake-general",
 			results: []saka.Result{
 				{Title: "General T", URL: "https://general.example/a", Snippet: "general s", Source: "fake-general", Position: 1},
 			},
 		}, nil
-	})
-	_ = saka.Register("fake-news", func(_ saka.ProviderConfig) (saka.Provider, error) {
+	}); err != nil {
+		panic(err)
+	}
+	if err := saka.Register("fake-news", func(_ saka.ProviderConfig) (saka.Provider, error) {
 		return &fakeVerticalProvider{
 			name: "fake-news",
 			results: []saka.Result{
 				{Title: "News T", URL: "https://news.example/a", Snippet: "news s", Source: "fake-news", Position: 1},
 			},
 		}, nil
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 // TestHandleSearchVerticalDistinctFromGeneral is T7.4's acceptance test: it
