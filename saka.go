@@ -150,6 +150,8 @@ type Engine struct {
 	fetcher *fetch.Fetcher
 }
 
+var _ Searcher = (*Engine)(nil)
+
 // New constructs an Engine from cfg.
 func New(cfg Config) (*Engine, error) {
 	if err := cfg.Validate(); err != nil {
@@ -219,4 +221,43 @@ func (e *Engine) Fetch(ctx context.Context, url string) (*Page, error) {
 // FetchStream streams extracted text chunks for a URL.
 func (e *Engine) FetchStream(ctx context.Context, url string) (<-chan Chunk, <-chan *Page, <-chan error) {
 	return e.fetcher.FetchStream(ctx, url)
+}
+
+// SearchStream runs Search synchronously, then streams the resulting
+// Results.Results slice over the item channel one at a time before sending
+// the same *Results summary on the done channel. On error, the error is
+// sent on the error channel instead.
+func (e *Engine) SearchStream(ctx context.Context, q Query) (<-chan Result, <-chan *Results, <-chan error) {
+	itemCh := make(chan Result, 8)
+	doneCh := make(chan *Results, 1)
+	errCh := make(chan error, 1)
+
+	go func() {
+		// Only itemCh is ranged over by consumers; doneCh/errCh each
+		// receive at most one value and are read via select, so they stay
+		// unclosed -- closing an unwritten buffered channel would make it
+		// spuriously receive-ready with the zero value (see fetch/stream.go).
+		defer close(itemCh)
+
+		res, err := e.Search(ctx, q)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		for _, r := range res.Results {
+			select {
+			case itemCh <- r:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		select {
+		case doneCh <- res:
+		case <-ctx.Done():
+		}
+	}()
+
+	return itemCh, doneCh, errCh
 }
