@@ -73,6 +73,8 @@ See lore/SKILL.md for the entry format.
 
 ## L-0007: Backgrounding a kazi `apply --parallel` launch with a trailing `&` *and* the Bash tool's `run_in_background: true` orphans the real process, which self-halts
 
+**Addendum (2026-08-30, T8.2):** the same orphaning happens via `nohup ... &` run inside a *plain foreground* Bash call (no `run_in_background: true` at all) -- the wrapping shell backgrounds the process and exits immediately, the tool call returns having only observed that wrapper, and the real `kazi apply` process is orphaned exactly as above. The root cause and fix are identical regardless of which shell syntax does the self-backgrounding: never combine ANY manual backgrounding (`&`, `nohup ... &`, `setsid`, etc.) with a `kazi apply --parallel` launch, in or out of `run_in_background: true` -- pass the raw foreground command to `run_in_background: true` and let the tool do the backgrounding, full stop. T8.2 hit this independently, diagnosed it correctly against this exact entry, and relaunched cleanly with no work lost (~80 minutes of wall-clock, same as the original incident).
+
 **Tags:** #kazi #parallel-agents #background-process #gotcha
 **Date:** 2026-08-30
 **Repo:** sirerun/saka
