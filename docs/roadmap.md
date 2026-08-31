@@ -240,19 +240,46 @@ is request/response, not SSE). T9.4 proves streaming composes with
 E7/E8's vertical mechanism. All three founder-greenlit epics (E7/E8/E9)
 are now at `fidelity: executable`; only E6 (parked) remains outline.
 
+**E9 -- Streaming Search Results -- IN PROGRESS (T9.1/5).**
+docs/plans/E9-streaming-search.md.
+- T9.1 `types.Searcher` gains `SearchStream(ctx, Query) (<-chan Result,
+  <-chan *Results, <-chan error)`; `*saka.Engine` implements it by
+  calling the existing, unmodified `Search` synchronously and streaming
+  its results -- `chain.Chain` untouched. Kazi's escalation ladder
+  (sonnet, then opus per docs/lore.md's stuck-run recipe) both reproduced
+  an identical `stuck` result: every capability predicate and all guards
+  but one passed, and the one holdout (`landed`, a clean-tree +
+  `HEAD == @{u}` check, not a hardcoded branch name) never went green
+  because the harness's disposable worktree reset before it committed
+  and pushed the already-correct code -- see docs/lore.md L-0011, the
+  first time this session confirmed that failure signature is a harness
+  gap, not something a bigger model fixes. Hand-implemented directly
+  instead, using the already-validated predicate set as the spec;
+  growing `types.Searcher` required adding a minimal `SearchStream` stub
+  to three pre-existing test doubles, noted as required fallout, not
+  scope creep. `go build`/`go vet`/`gofmt -l` clean, full non-cli suite
+  and `go test ./...` (incl. cli/) green with `-race -cover`. 2026-08-30.
+  (PR #80; this checkbox and roadmap entry landed as a follow-up after
+  the coordinator found the mark-done step had been skipped during a
+  routine `/sitrep` pass, 2026-08-31T00:5xZ)
+
 ## In progress
 
-- T9.1 (SearchStream on types.Searcher/Engine): claimed and dispatched to
-  a kazi-lane agent, 2026-08-30T17:2xZ (first attempt, no prior claim).
-  Worktree: `saka-worktrees/t9-1-searchstream`, branch
-  `task/t9-1-searchstream`. No PR yet. T7.1 (the other concurrent editor
-  of `types/types.go`) has since merged (PR #62) -- T9.1's `SearchStream`
-  addition is in an unrelated section of the file, but rebase onto main
-  if a conflict shows up.
+- T7.4 (wiring `&vertical=news` into `GET /v1/search` and a `--vertical`
+  flag into `saka search`): claimed and dispatched 2026-08-30T23:33Z.
+  As of 2026-08-31T00:0xZ its kazi run shows the same L-0011 signature
+  as T9.1 above -- all 5 capability predicates and every guard but
+  `landed` pass, no harness process currently running. Coordinator is
+  addressing directly.
+- T8.2 (a `searxng-images` provider, `provider/searxng/images.go`,
+  querying the existing self-hosted SearXNG instance with
+  `categories=images`): claimed 2026-08-30T23:34Z, no run recorded yet
+  as of this update -- longer than this session's typical pace for a
+  task this size; worth a direct check.
 
 ## In flight (PRs open)
 
-- None yet from T9.1's dispatch -- check back once its agent reports.
+- None currently open from T7.4/T8.2 -- check back once either produces one.
 
 ## Planned
 
@@ -265,14 +292,13 @@ derived just-in-time by `/apply`.
   (deps: [T7.4, T7.5]) is claimable once T7.4 lands.
 - E8 Images Vertical (5 tasks, fidelity: executable) --
   docs/plans/E8-images-vertical.md. T8.1 shipped (see Shipped). T8.2
-  (deps: [T7.2, T8.1]) is claimable now -- `feat(saka): route Search
-  through per-vertical provider chains` (commit 767b6f6) landed T7.2 on
-  main, and T8.1 is merged. T8.3/T8.4 (deps: [T7.4, T7.5, T8.2] /
-  [T7.5, T8.2]) wait on T8.2 plus their T7.x counterparts; T8.5 (deps:
-  [T8.3, T8.4]) after those.
+  (deps: [T7.2, T8.1]) is claimed and in progress (see In progress).
+  T8.3/T8.4 (deps: [T7.4, T7.5, T8.2] / [T7.5, T8.2]) wait on T8.2 plus
+  their T7.x counterparts; T8.5 (deps: [T8.3, T8.4]) after those.
 - E9 Streaming Search Results (5 tasks, fidelity: executable) --
-  docs/plans/E9-streaming-search.md. T9.1 (SearchStream on
-  types.Searcher/Engine) has no deps, claimable now.
+  docs/plans/E9-streaming-search.md. T9.1 shipped (see Shipped). T9.2/T9.3
+  (deps: [T9.1]) are claimable now; T9.4 (deps: [T9.1, T7.2], both
+  satisfied) is claimable now too; T9.5 (deps: [T9.2, T9.3]) after those.
 - E6 Usage Persistence & Billing -- parked, not triggered. Needs a fresh
   founder decision (a store/Stripe backend choice) before T6.0 can run.
 
